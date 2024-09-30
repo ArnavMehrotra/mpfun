@@ -5,17 +5,23 @@
 
 
 struct Track {
-	const uint32_t _trackID;
-	const std::string _type;
-	const uint32_t _timescale;
-	const uint64_t _duration;
-	const std::vector<uint32_t> _sampleSizes;
-	const std::vector<uint32_t> _chunkOffsets;
+	uint32_t _trackID;
+	uint32_t _timescale;
+	uint64_t _duration;
+		
+	std::string _codec;
+
+	std::vector<uint32_t> _sampleSizes;
+	std::vector<uint32_t> _chunkOffsets;
+	std::vector<uint32_t> _samplesPerChunk;
+	std::vector<uint32_t> _timeToSample;
+	//std::vector<uint32_t> _compositionOffset;
+	//std::vector<uint32_t> _sampleToChunkIndex;
 };
 
 class mp4Reader {
 private:
-	std::vector<Track> tracks;
+	std::vector<Track> _tracks;
 	
 public:
 	uint64_t readBox(std::ifstream& mp4Stream);

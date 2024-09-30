@@ -57,12 +57,14 @@ uint64_t mp4Reader::readBox(std::ifstream &mp4Stream) {
 		}
 	}
 	else if(boxType == "trak") {
+		Track newTrack;
+		_tracks.push_back(newTrack);
 		while(bytesRead < boxSize) {
 			bytesRead += readBox(mp4Stream);
 		}
+		printf("trak box is ID %u, format %s, timescale %u, and duration %llu\n", _tracks.back()._trackID, _tracks.back()._codec.c_str(), _tracks.back()._timescale, _tracks.back()._duration);
 	}
 	else if(boxType == "tkhd") {
-
 		uint8_t version = mp4Stream.get();
 		mp4Stream.seekg(11, std::ios::cur);
 		bytesRead += 12;
@@ -74,17 +76,41 @@ uint64_t mp4Reader::readBox(std::ifstream &mp4Stream) {
 		uint32_t duration = readInt32(mp4Stream);
 		bytesRead += 4;
 
-		printf("trak box is version %u, ID %u, and duration %u\n", version, trackID, duration);
-		mp4Stream.seekg(boxSize - bytesRead, std::ios::cur);
+		_tracks.back()._trackID = trackID;
+		_tracks.back()._duration = (uint64_t) duration & 0x00000000FFFFFFFF;
 	}
 	else if(boxType == "mdia") {
 		while(bytesRead < boxSize) {
 			bytesRead += readBox(mp4Stream);
 		}
 	}
-	else {
-		mp4Stream.seekg(boxSize - bytesRead, std::ios::cur);
+	else if(boxType == "mdhd") {	
+		uint8_t version = mp4Stream.get();
+		bytesRead++;
+		//printf("mdhd version %u\n", version);
+		if(version == 0) {	
+			mp4Stream.seekg(11, std::ios::cur);
+			_tracks.back()._timescale = readInt32(mp4Stream);
+			bytesRead += 15;
+		}
 	}
+	else if(boxType == "minf") {
+		while(bytesRead < boxSize) {
+			bytesRead += readBox(mp4Stream);
+		}
+	}
+	else if(boxType == "stbl") {
+		while(bytesRead < boxSize) {
+			bytesRead += readBox(mp4Stream);
+		}
+	}
+	else if(boxType == "stsd") {	
+		mp4Stream.seekg(12, std::ios::cur);
+		_tracks.back()._codec = readString(mp4Stream, 4);
+		bytesRead += 16;
+	}
+
+	mp4Stream.seekg(boxSize - bytesRead, std::ios::cur);
 
 	return boxSize;
 }
