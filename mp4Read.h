@@ -22,11 +22,12 @@ public:
 
 	mp4Reader(std::ifstream &mp4Stream) {		
 		//read boxes from mp4
+		uint64_t bytesRead = 0;
 		while(mp4Stream.peek() != EOF) {
 			//printf("Box is size %llu, and type %s\n", newBox.getSize(), newBox.getType().c_str());
-			readBox(mp4Stream);
+			bytesRead += readBox(mp4Stream);
 		}
-
+		printf("Read %llu total bytes\n", bytesRead);
 		mp4Stream.close();
 	}
 };

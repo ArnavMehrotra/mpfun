@@ -5,12 +5,12 @@
 #include "mp4Read.h"
 
 
-uint64_t readInt32(std::ifstream& file) {
+uint32_t readInt32(std::ifstream& file) {
 	uint8_t bytes[4];
 
 	//i really don't get this typecast thing
 	file.read(reinterpret_cast<char*>(bytes), 4);
-	uint64_t result = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3] & 0x00000000FFFFFFFF; 
+	uint64_t result = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]; 
 	return result;
 }
 
@@ -31,36 +31,59 @@ std::string readString(std::ifstream& file, size_t length) {
 }
 
 uint64_t mp4Reader::readBox(std::ifstream &mp4Stream) {
-	uint64_t headerSize = 8;
-	uint64_t boxSize = readInt32(mp4Stream);
+	uint64_t boxSize = (uint64_t) readInt32(mp4Stream);
 	std::string boxType = readString(mp4Stream, 4);
+	uint64_t bytesRead = 8;
 	
 
 	//box size of 1 means extended size is being used
 	//in case of extended size we need to read a 64 bit number
 	if(boxSize == 1) {
 		boxSize = readInt64(mp4Stream);
-		//add another 8 bytes to header size
-		headerSize += 8;
+		bytesRead += 8;
 	}
 
 	//data size is 8 less than metadata says because of headers
-	uint64_t readSize = boxSize - headerSize; 
 	
 	//gets freed in Box class destructor (hopefully)
 	//char* buffer = (char*) malloc(2 * readSize);
 	//mp4Stream.read(buffer, readSize);
 
-	printf("box size %llu type %s\n", , boxType.c_str());
+	printf("box size %llu type %s\n", boxSize, boxType.c_str());
 
 	if(boxType == "moov") {
-		int bytesRead = 0;
-		while(bytesRead <= readSize) {
+		while(bytesRead < boxSize) {
+			bytesRead += readBox(mp4Stream);
+		}
+	}
+	else if(boxType == "trak") {
+		while(bytesRead < boxSize) {
+			bytesRead += readBox(mp4Stream);
+		}
+	}
+	else if(boxType == "tkhd") {
+
+		uint8_t version = mp4Stream.get();
+		mp4Stream.seekg(11, std::ios::cur);
+		bytesRead += 12;
+
+		uint32_t trackID = readInt32(mp4Stream);
+		mp4Stream.seekg(4, std::ios::cur);
+		bytesRead += 8;
+
+		uint32_t duration = readInt32(mp4Stream);
+		bytesRead += 4;
+
+		printf("trak box is version %u, ID %u, and duration %u\n", version, trackID, duration);
+		mp4Stream.seekg(boxSize - bytesRead, std::ios::cur);
+	}
+	else if(boxType == "mdia") {
+		while(bytesRead < boxSize) {
 			bytesRead += readBox(mp4Stream);
 		}
 	}
 	else {
-		mp4Stream.seekg(readSize, std::ios::cur);
+		mp4Stream.seekg(boxSize - bytesRead, std::ios::cur);
 	}
 
 	return boxSize;
