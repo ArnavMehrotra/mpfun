@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include "box.h"
+#include "mp4Read.h"
 
 
 uint64_t readInt32(std::ifstream& file) {
@@ -17,9 +17,11 @@ uint64_t readInt32(std::ifstream& file) {
 uint64_t readInt64(std::ifstream& file) {
 	uint8_t bytes[8];
 	file.read(reinterpret_cast<char*>(bytes), 8);
-	return ((uint64_t)bytes[0] << 56) | ((uint64_t)bytes[1] << 48) | ((uint64_t)bytes[2] << 40) |
+	uint64_t result = ((uint64_t)bytes[0] << 56) | ((uint64_t)bytes[1] << 48) | ((uint64_t)bytes[2] << 40) |
 	       ((uint64_t)bytes[3] << 32) | ((uint64_t)bytes[4] << 24) | ((uint64_t)bytes[5] << 16) |
 		((uint64_t)bytes[6] << 8) | (uint64_t)bytes[7];
+
+	return result;
 }
 
 std::string readString(std::ifstream& file, size_t length) {
@@ -28,34 +30,40 @@ std::string readString(std::ifstream& file, size_t length) {
 	return std::string(buffer.begin(), buffer.end());
 }
 
-Box readBox(std::ifstream& mp4Stream) {
+uint64_t mp4Reader::readBox(std::ifstream &mp4Stream) {
+	uint64_t headerSize = 8;
 	uint64_t boxSize = readInt32(mp4Stream);
 	std::string boxType = readString(mp4Stream, 4);
-
-	//data size is 8 less than metadata says because of headers
-	uint64_t readSize = boxSize - 8; 
 	
 
 	//box size of 1 means extended size is being used
 	//in case of extended size we need to read a 64 bit number
 	if(boxSize == 1) {
 		boxSize = readInt64(mp4Stream);
-		//subtract another 8 bytes from the data
-		readSize -= 8;
+		//add another 8 bytes to header size
+		headerSize += 8;
 	}
+
+	//data size is 8 less than metadata says because of headers
+	uint64_t readSize = boxSize - headerSize; 
 	
 	//gets freed in Box class destructor (hopefully)
-	char* buffer = (char*) malloc(2 * readSize);
-	mp4Stream.read(buffer, readSize);
+	//char* buffer = (char*) malloc(2 * readSize);
+	//mp4Stream.read(buffer, readSize);
 
-	//mp4Stream.seekg(boxSize - (8 + offset), std::ios::cur);
+	printf("box size %llu type %s\n", , boxType.c_str());
 
-	//give Box read size because that's the size of data
-	return Box(readSize, boxType, buffer);
-}
+	if(boxType == "moov") {
+		int bytesRead = 0;
+		while(bytesRead <= readSize) {
+			bytesRead += readBox(mp4Stream);
+		}
+	}
+	else {
+		mp4Stream.seekg(readSize, std::ios::cur);
+	}
 
-void Box::processMoov() {
-	return;
+	return boxSize;
 }
 
 int main(int argc, char** argv) {
@@ -66,14 +74,7 @@ int main(int argc, char** argv) {
 		printf("Could not open file %s\n", fName.c_str());
 		return -1;
 	}
-	
-	//read boxes from mp4
-	while(mp4Stream.peek() != EOF) {
-		Box newBox = readBox(mp4Stream);
-		printf("Box is size %llu, and type %s\n", newBox.getSize(), newBox.getType().c_str());
-	}
-
-	mp4Stream.close();
+	mp4Reader reader(mp4Stream);
 
 	return 0;
 }
