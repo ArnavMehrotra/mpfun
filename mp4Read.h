@@ -33,7 +33,10 @@ public:
 			//printf("Box is size %llu, and type %s\n", newBox.getSize(), newBox.getType().c_str());
 			bytesRead += readBox(mp4Stream);
 		}
-		printf("Read %llu total bytes\n", bytesRead);
-		mp4Stream.close();
+
+		mp4Stream.seekg(0, std::ios::end);
+		uint64_t fileBytes = mp4Stream.tellg();
+		if(fileBytes == bytesRead) printf("read bytes and file bytes match\n");
+		else printf("Read %llu total bytes compared to %llu bytes in file", bytesRead, fileBytes);
 	}
 };
