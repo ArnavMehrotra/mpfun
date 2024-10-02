@@ -22,6 +22,7 @@ struct Track {
 class mp4Reader {
 private:
 	std::vector<Track> _tracks;
+	std::vector<uint8_t> _mediaData;
 	
 public:
 	uint64_t readBox(std::ifstream& mp4Stream);
