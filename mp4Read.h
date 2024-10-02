@@ -4,6 +4,7 @@
 #include <memory>
 
 
+
 struct Track {
 	uint32_t _trackID;
 	uint32_t _timescale;
@@ -21,23 +22,45 @@ struct Track {
 
 class mp4Reader {
 private:
+	std::ifstream _stream;
 	std::vector<Track> _tracks;
 	std::vector<uint8_t> _mediaData;
+	int _status = 0;
 	
 public:
-	uint64_t readBox(std::ifstream& mp4Stream);
+	mp4Reader(std::string fName) {		
+		_stream = std::ifstream(fName, std::ios::binary);
 
-	mp4Reader(std::ifstream &mp4Stream) {		
+		if(!_stream.is_open()) {
+			printf("Could not open file %s\n", fName.c_str());
+			_status = 1;
+			return;
+		}
+		//_stream = ;
+		_stream.seekg(0, std::ios::beg);
 		//read boxes from mp4
 		uint64_t bytesRead = 0;
-		while(mp4Stream.peek() != EOF) {
+		while(_stream.peek() != EOF) {
 			//printf("Box is size %llu, and type %s\n", newBox.getSize(), newBox.getType().c_str());
-			bytesRead += readBox(mp4Stream);
+			bytesRead += readBox();
 		}
 
-		mp4Stream.seekg(0, std::ios::end);
-		uint64_t fileBytes = mp4Stream.tellg();
+		_stream.seekg(0, std::ios::end);
+		uint64_t fileBytes = _stream.tellg();
 		if(fileBytes == bytesRead) printf("read bytes and file bytes match\n");
-		else printf("Read %llu total bytes compared to %llu bytes in file", bytesRead, fileBytes);
+		else {
+			printf("Read %llu total bytes compared to %llu bytes in file", bytesRead, fileBytes);
+			_status = 1;
+			return;
+		}
 	}
+
+	~mp4Reader() {
+		_stream.close();
+	}
+	
+	int getStatus() { return _status; }
+
+	uint64_t readBox();
+	std::vector<std::vector<uint8_t>> extractSamples();
 };
