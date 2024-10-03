@@ -25,9 +25,14 @@ private:
 	std::ifstream _stream;
 	std::vector<Track> _tracks;
 	std::vector<uint8_t> _mediaData;
+	std::vector<std::vector<std::vector<uint8_t>>> _samples;
 	int _status = 0;
 	
 public:
+
+	uint64_t readBox();
+	void extractSamples(int trackIndex);
+
 	mp4Reader(std::string fName) {		
 		_stream = std::ifstream(fName, std::ios::binary);
 
@@ -53,6 +58,10 @@ public:
 			_status = 1;
 			return;
 		}
+
+		for(int i = 0; i < _tracks.size(); i++) {
+			extractSamples(i);
+		}
 	}
 
 	~mp4Reader() {
@@ -61,6 +70,4 @@ public:
 	
 	int getStatus() { return _status; }
 
-	uint64_t readBox();
-	std::vector<std::vector<uint8_t>> extractSamples();
 };

@@ -86,11 +86,11 @@ uint64_t mp4Reader::readBox() {
 
 		printf("trak %u is format %s\n", _tracks.back()._trackID, fmt.c_str());
 		
-		/*
+		
 		printf("trak box is ID %u, format %s, timescale %u, and duration %llu with %zu samples, %zu chunk offsets %zu tts entries, %zu spc entries\n",
 		_tracks.back()._trackID, _tracks.back()._codec.c_str(), _tracks.back()._timescale, _tracks.back()._duration,
 		sampleCount, cOffsetCount, ttsCount, spcCount);
-		*/
+		
 	} else if(boxType == "tkhd") {
 		uint8_t version = _stream.get();
 		_stream.seekg(11, std::ios::cur);
@@ -197,14 +197,24 @@ uint64_t mp4Reader::readBox() {
 	
 
 	_stream.seekg(boxSize - bytesRead, std::ios::cur);
-	extractSamples();
 
 	return boxSize;
 }
 
-std::vector<std::vector<uint8_t>> mp4Reader::extractSamples() {
-	
-	return std::vector<std::vector<uint8_t>>();
+void mp4Reader::extractSamples(int trackIndex) {
+	_samples.emplace_back();
+	Track& track = _tracks[trackIndex];
+	int sampleIndex = 0;
+	for(int i = 0; i < track._chunkOffsets.size(); i++) {
+		_stream.seekg(track._chunkOffsets[i], std::ios::beg);
+		//printf("samples per chunk %u\n", track._samplesPerChunk[i]);
+		for(int j = 0; j < track._samplesPerChunk[i]; j++) {
+			std::vector<uint8_t> sampleData = readBytes(_stream, track._sampleSizes[sampleIndex]);
+			sampleIndex++;
+			_samples.back().push_back(sampleData);
+		}
+	}
+	printf("extracted %d samples from trak %u\n", sampleIndex, track._trackID);
 }
 
 int main(int argc, char** argv) {
