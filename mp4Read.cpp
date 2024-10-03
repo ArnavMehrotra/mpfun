@@ -81,9 +81,6 @@ uint64_t mp4Reader::readBox() {
 		if(sampleCount == ttsCount) printf("read time to samples for trak %u\n", _tracks.back()._trackID);
 		else printf("TTS COUNT AND SAMPLE COUNT DIFFER FOR TRAK %u : tts count %zu sample count %zu\n", _tracks.back()._trackID, ttsCount, sampleCount);
 
-		if(cOffsetCount == spcCount) printf("read samples per chunk for trak %u\n", _tracks.back()._trackID);
-		else printf("SAMPLES PER CHUNK AND CHUNK OFFSETS DIFFER FOR TRAK %u : spc %zu chunk offsets %zu\n", _tracks.back()._trackID, spcCount, cOffsetCount);
-
 		printf("trak %u is format %s\n", _tracks.back()._trackID, fmt.c_str());
 		
 		
@@ -166,19 +163,15 @@ uint64_t mp4Reader::readBox() {
 		_stream.seekg(4, std::ios::cur);
 		uint32_t entryCount = readInt32(_stream);
 		bytesRead += 8;
-		uint32_t prevChunk = 0;
+
 		while(bytesRead < boxSize) {
 			uint32_t firstChunk = readInt32(_stream);
 			uint32_t samplesPerChunk = readInt32(_stream);
-			uint32_t sampleDescriptionIndex = readInt32(_stream);
+			_stream.seekg(4, std::ios::cur);
 			bytesRead += 12;
-
-			for(uint32_t chunk = prevChunk; chunk < firstChunk; chunk++) {
-				_tracks.back()._samplesPerChunk.push_back(samplesPerChunk);
-			}
-			
-			prevChunk = firstChunk;
+			_tracks.back()._samplesPerChunk.emplace_back(firstChunk, samplesPerChunk);
 		}
+
 	} else if(boxType == "stts") {
 		_stream.seekg(4, std::ios::cur);
 		uint32_t entryCount = readInt32(_stream);
@@ -205,15 +198,40 @@ void mp4Reader::extractSamples(int trackIndex) {
 	_samples.emplace_back();
 	Track& track = _tracks[trackIndex];
 	int sampleIndex = 0;
+
+	std::vector<uint32_t> buildSPC;
+	std::vector<std::pair<uint32_t, uint32_t>> spcTable = track._samplesPerChunk;
+
+	for(int i = 1; i < spcTable.size(); i++) {
+		buildSPC.insert(buildSPC.end(), spcTable[i].first - spcTable[i - 1].first, spcTable[i - 1].second);
+	}
+
+	buildSPC.insert(buildSPC.end(), track._chunkOffsets.size() - spcTable.back().first + 1, spcTable.back().second);
+	
+
+	if(buildSPC.size() != track._chunkOffsets.size()) {
+		printf("error interpreting samples per chunk");
+		_status = 1;
+		return;
+	}
+
 	for(int i = 0; i < track._chunkOffsets.size(); i++) {
 		_stream.seekg(track._chunkOffsets[i], std::ios::beg);
-		//printf("samples per chunk %u\n", track._samplesPerChunk[i]);
-		for(int j = 0; j < track._samplesPerChunk[i]; j++) {
+		//print("samples per chunk %u\n", track._samplesPerChunk[i]);
+		for(int j = 0; j < buildSPC[i]; j++) {
+
+			if(sampleIndex >= track._sampleSizes.size()) {
+				printf("attempted to read too many samples\n");
+				_status = 1;
+				return;
+			}
+
 			std::vector<uint8_t> sampleData = readBytes(_stream, track._sampleSizes[sampleIndex]);
 			sampleIndex++;
 			_samples.back().push_back(sampleData);
 		}
 	}
+
 	printf("extracted %d samples from trak %u\n", sampleIndex, track._trackID);
 }
 

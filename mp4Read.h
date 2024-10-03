@@ -14,7 +14,7 @@ struct Track {
 
 	std::vector<uint32_t> _sampleSizes;
 	std::vector<uint32_t> _chunkOffsets;
-	std::vector<uint32_t> _samplesPerChunk;
+	std::vector<std::pair<uint32_t, uint32_t>> _samplesPerChunk;
 	std::vector<uint32_t> _timeToSample;
 	//std::vector<uint32_t> _compositionOffset;
 	//std::vector<uint32_t> _sampleToChunkIndex;
