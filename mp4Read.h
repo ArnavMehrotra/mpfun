@@ -32,6 +32,8 @@ public:
 
 	uint64_t readBox();
 	void extractSamples(int trackIndex);
+	void handleAudio();
+	void parseAAC(int trackIndex);
 
 	mp4Reader(std::string fName) {		
 		_stream = std::ifstream(fName, std::ios::binary);
@@ -41,7 +43,6 @@ public:
 			_status = 1;
 			return;
 		}
-		//_stream = ;
 		_stream.seekg(0, std::ios::beg);
 		//read boxes from mp4
 		uint64_t bytesRead = 0;

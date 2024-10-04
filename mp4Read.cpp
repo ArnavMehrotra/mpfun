@@ -7,7 +7,6 @@
 #include "mp4Read.h"
 
 
-
 std::vector<uint8_t> readBytes(std::ifstream& file, std::streamsize n) {
 	std::vector<uint8_t> result(n);
 	file.read(reinterpret_cast<char*>(result.data()), n);
@@ -50,6 +49,7 @@ uint64_t mp4Reader::readBox() {
 	if(boxSize == 1) {
 		boxSize = readInt64(_stream);
 		bytesRead += 8;
+		printf("mdat box at %llu, first byte is %02x\n", (uint64_t) _stream.tellg(), _stream.peek());
 	}
 
 	//data size is 8 less than metadata says because of headers
@@ -159,6 +159,8 @@ uint64_t mp4Reader::readBox() {
 
 		if(chunkOffsets.size() == entryCount) printf("read chunk offsets for trak %u\n", _tracks.back()._trackID);
 		else printf("CHUNK OFFSET COUNT AND CHUNK OFFSET ARRAY DIFFER FOR TRAK %u : chunk offset count %u, chunk offset array %zu\n", _tracks.back()._trackID, entryCount, chunkOffsets.size());
+	} else if(boxType == "co64") {
+		printf("ayo\n");
 	} else if(boxType == "stsc") {
 		_stream.seekg(4, std::ios::cur);
 		uint32_t entryCount = readInt32(_stream);
@@ -188,8 +190,9 @@ uint64_t mp4Reader::readBox() {
 		}
 	}
 	
-
-	_stream.seekg(boxSize - bytesRead, std::ios::cur);
+	
+	_stream.seekg(static_cast<std::streampos>(boxSize - bytesRead), std::ios::cur);
+	if(boxType == "mdat") printf("mdat box ends at %llu with size %llu\n", (uint64_t) _stream.tellg(), boxSize);
 
 	return boxSize;
 }
@@ -217,6 +220,8 @@ void mp4Reader::extractSamples(int trackIndex) {
 
 	for(int i = 0; i < track._chunkOffsets.size(); i++) {
 		_stream.seekg(track._chunkOffsets[i], std::ios::beg);
+		printf("chunk offset %u\n", track._chunkOffsets[i]);
+		//printf("%02x first byte in chunk\n", _stream.peek());
 		//print("samples per chunk %u\n", track._samplesPerChunk[i]);
 		for(int j = 0; j < buildSPC[i]; j++) {
 
@@ -235,12 +240,30 @@ void mp4Reader::extractSamples(int trackIndex) {
 	printf("extracted %d samples from trak %u\n", sampleIndex, track._trackID);
 }
 
+void mp4Reader::parseAAC(int trackIndex) {
+	std::vector<std::vector<uint8_t>> rawSamples = _samples[trackIndex];
+	for(int i = 0; i < rawSamples[0].size(); i++) {
+		printf("%02x", rawSamples[0][i]);
+	}
+	printf("\n");
+}
+
+void mp4Reader::handleAudio() {
+	for(int i = 0; i < _tracks.size(); i++) {
+		if(_tracks[i]._codec == "mp4a") {
+			parseAAC(i);
+		}
+	}
+}
+
 int main(int argc, char** argv) {
 	std::string fName("whereisshe.mp4");
 	mp4Reader reader(fName);
 	if(reader.getStatus()) {
 		printf("error reading mp4 data from file %s\n", fName.c_str()); 
 	}
+
+	reader.handleAudio();
 	
 	return 0;
 }
