@@ -4,6 +4,7 @@
 #include <memory>
 
 
+int readMP4(std::string fName);
 
 struct Track {
 	uint32_t _trackID;

@@ -124,9 +124,11 @@ uint64_t mp4Reader::readBox() {
 			bytesRead += readBox();
 		}
 	} else if(boxType == "stsd") {	
-		_stream.seekg(12, std::ios::cur);
-		_tracks.back()._codec = readString(_stream, 4);
-		bytesRead += 16;
+		//skip over version (1b), flags (3b), and number of entries (4b)
+		_stream.seekg(8, std::ios::cur);
+		//printf("number of stsd entries %u\n", readInt32(_stream));
+		bytesRead += 8;
+		bytesRead += readBox();
 	} else if(boxType == "stsz") {
 		_stream.seekg(4, std::ios::cur);
 		uint32_t sampleSize = readInt32(_stream);
@@ -188,9 +190,33 @@ uint64_t mp4Reader::readBox() {
 				tts.push_back(sampleDelta);
 			}
 		}
+	} else if(boxType == "mp4a") {
+		//printf("mp4a is size %llu\n", boxSize);
+		_tracks.back()._codec = "mp4a";
+
+		//seek to esds box
+		int offset = 32;
+		_stream.seekg(offset, std::ios::cur);
+		bytesRead += offset;
+
+		//get raw bytes from the box (I had to do this to find the offset in the mp4 I was testing)
+
+		/*
+		auto yo = readBytes(_stream, boxSize - bytesRead);
+		bytesRead += boxSize - bytesRead;
+		for(int i = 0; i < yo.size(); i++){ 
+			printf("%01X", yo[i]);
+		}
+		printf("\n");
+		*/
+		
+		//TODO: PARSE ESDS BOX TO GET SAMPLE RATE, CHANNELS, AND "PROFILE" THESE ARE HARD CODED IN PARSE AAC RIGHT NOW
+		printf("%s box\n", readString(_stream, 4).c_str());
+		bytesRead += 4;
+	} else if(boxType == "avc1") {
+		_tracks.back()._codec = "avc1";
 	}
-	
-	
+		
 	_stream.seekg(static_cast<std::streampos>(boxSize - bytesRead), std::ios::cur);
 	if(boxType == "mdat") printf("mdat box ends at %llu with size %llu\n", (uint64_t) _stream.tellg(), boxSize);
 
@@ -220,11 +246,10 @@ void mp4Reader::extractSamples(int trackIndex) {
 
 	for(int i = 0; i < track._chunkOffsets.size(); i++) {
 		_stream.seekg(track._chunkOffsets[i], std::ios::beg);
-		printf("chunk offset %u\n", track._chunkOffsets[i]);
+		//printf("chunk offset %u\n", track._chunkOffsets[i]);
 		//printf("%02x first byte in chunk\n", _stream.peek());
 		//print("samples per chunk %u\n", track._samplesPerChunk[i]);
 		for(int j = 0; j < buildSPC[i]; j++) {
-
 			if(sampleIndex >= track._sampleSizes.size()) {
 				printf("attempted to read too many samples\n");
 				_status = 1;
@@ -242,10 +267,14 @@ void mp4Reader::extractSamples(int trackIndex) {
 
 void mp4Reader::parseAAC(int trackIndex) {
 	std::vector<std::vector<uint8_t>> rawSamples = _samples[trackIndex];
-	for(int i = 0; i < rawSamples[0].size(); i++) {
-		printf("%02x", rawSamples[0][i]);
+	/*
+	for(int j = 0; j < rawSamples.size(); j++) {
+		for(int i = 0; i < rawSamples[j].size(); i++) {
+			printf("%02x", rawSamples[j][i]);
+		}
+		printf("\n\n\n");
 	}
-	printf("\n");
+	*/
 }
 
 void mp4Reader::handleAudio() {
@@ -255,6 +284,19 @@ void mp4Reader::handleAudio() {
 		}
 	}
 }
+
+int readMP4(std::string fName) {
+	mp4Reader reader(fName);
+	if(reader.getStatus()) {
+		printf("error reading mp4 data from file %s\n", fName.c_str()); 
+	}
+
+	reader.handleAudio();
+	
+	return 0;
+}
+
+/*
 
 int main(int argc, char** argv) {
 	std::string fName("whereisshe.mp4");
@@ -267,3 +309,6 @@ int main(int argc, char** argv) {
 	
 	return 0;
 }
+
+
+*/
