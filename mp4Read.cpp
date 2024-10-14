@@ -49,7 +49,6 @@ uint64_t mp4Reader::readBox() {
 	if(boxSize == 1) {
 		boxSize = readInt64(_stream);
 		bytesRead += 8;
-		printf("mdat box at %llu, first byte is %02x\n", (uint64_t) _stream.tellg(), _stream.peek());
 	}
 
 	//data size is 8 less than metadata says because of headers
@@ -58,7 +57,6 @@ uint64_t mp4Reader::readBox() {
 	//char* buffer = (char*) malloc(2 * readSize);
 	//_stream.read(buffer, readSize);
 
-	//printf("box size %llu type %s\n", boxSize, boxType.c_str());
 
 	if(boxType == "moov") {
 		while(bytesRead < boxSize) {
@@ -78,15 +76,7 @@ uint64_t mp4Reader::readBox() {
 		size_t spcCount = _tracks.back()._samplesPerChunk.size();
 		std::string fmt = _tracks.back()._codec;
 		
-		if(sampleCount == ttsCount) printf("read time to samples for trak %u\n", _tracks.back()._trackID);
-		else printf("TTS COUNT AND SAMPLE COUNT DIFFER FOR TRAK %u : tts count %zu sample count %zu\n", _tracks.back()._trackID, ttsCount, sampleCount);
-
-		printf("trak %u is format %s\n", _tracks.back()._trackID, fmt.c_str());
-		
-		
-		printf("trak box is ID %u, format %s, timescale %u, and duration %llu with %zu samples, %zu chunk offsets %zu tts entries, %zu spc entries\n",
-		_tracks.back()._trackID, _tracks.back()._codec.c_str(), _tracks.back()._timescale, _tracks.back()._duration,
-		sampleCount, cOffsetCount, ttsCount, spcCount);
+		if(sampleCount != ttsCount) printf("TTS COUNT AND SAMPLE COUNT DIFFER FOR TRAK %u : tts count %zu sample count %zu\n", _tracks.back()._trackID, ttsCount, sampleCount);	
 		
 	} else if(boxType == "tkhd") {
 		uint8_t version = _stream.get();
@@ -109,7 +99,6 @@ uint64_t mp4Reader::readBox() {
 	} else if(boxType == "mdhd") {
 		uint8_t version = _stream.get();
 		bytesRead++;
-		//printf("mdhd version %u\n", version);
 		if(version == 0) {	
 			_stream.seekg(11, std::ios::cur);
 			_tracks.back()._timescale = readInt32(_stream);
@@ -126,7 +115,6 @@ uint64_t mp4Reader::readBox() {
 	} else if(boxType == "stsd") {	
 		//skip over version (1b), flags (3b), and number of entries (4b)
 		_stream.seekg(8, std::ios::cur);
-		//printf("number of stsd entries %u\n", readInt32(_stream));
 		bytesRead += 8;
 		bytesRead += readBox();
 	} else if(boxType == "stsz") {
@@ -147,8 +135,10 @@ uint64_t mp4Reader::readBox() {
 			sampleSizes.insert(sampleSizes.end(), sampleCount, sampleSize);
 		}
 
-		if(sampleSizes.size() == sampleCount) printf("read sample count for trak %u\n", _tracks.back()._trackID);
-		else printf("SAMPLE COUNT AND SAMPLE ARRAY DIFFER FOR TRAK %u : sample count %u sample array %zu\n", _tracks.back()._trackID, sampleCount, sampleSizes.size());	
+		if(sampleSizes.size() != sampleCount) {
+			printf("SAMPLE COUNT AND SAMPLE ARRAY DIFFER FOR TRAK %u : sample count %u sample array %zu\n", _tracks.back()._trackID, sampleCount, sampleSizes.size());	
+		}
+
 	} else if(boxType == "stco") {	
 		_stream.seekg(4, std::ios::cur);
 		uint32_t entryCount = readInt32(_stream);
@@ -159,8 +149,10 @@ uint64_t mp4Reader::readBox() {
 			bytesRead += 4;
 		}
 
-		if(chunkOffsets.size() == entryCount) printf("read chunk offsets for trak %u\n", _tracks.back()._trackID);
-		else printf("CHUNK OFFSET COUNT AND CHUNK OFFSET ARRAY DIFFER FOR TRAK %u : chunk offset count %u, chunk offset array %zu\n", _tracks.back()._trackID, entryCount, chunkOffsets.size());
+		if(chunkOffsets.size() != entryCount) {
+			printf("CHUNK OFFSET COUNT AND CHUNK OFFSET ARRAY DIFFER FOR TRAK %u : chunk offset count %u, chunk offset array %zu\n",
+			_tracks.back()._trackID, entryCount, chunkOffsets.size());
+		}
 	} else if(boxType == "co64") {
 		printf("ayo\n");
 	} else if(boxType == "stsc") {
@@ -191,34 +183,21 @@ uint64_t mp4Reader::readBox() {
 			}
 		}
 	} else if(boxType == "mp4a") {
-		//printf("mp4a is size %llu\n", boxSize);
 		_tracks.back()._codec = "mp4a";
 
 		//seek to esds box
 		int offset = 32;
 		_stream.seekg(offset, std::ios::cur);
 		bytesRead += offset;
-
-		//get raw bytes from the box (I had to do this to find the offset in the mp4 I was testing)
-
-		/*
-		auto yo = readBytes(_stream, boxSize - bytesRead);
-		bytesRead += boxSize - bytesRead;
-		for(int i = 0; i < yo.size(); i++){ 
-			printf("%01X", yo[i]);
-		}
-		printf("\n");
-		*/
-		
+	
 		//TODO: PARSE ESDS BOX TO GET SAMPLE RATE, CHANNELS, AND "PROFILE" THESE ARE HARD CODED IN PARSE AAC RIGHT NOW
-		printf("%s box\n", readString(_stream, 4).c_str());
+		readString(_stream, 4);
 		bytesRead += 4;
 	} else if(boxType == "avc1") {
 		_tracks.back()._codec = "avc1";
 	}
 		
 	_stream.seekg(static_cast<std::streampos>(boxSize - bytesRead), std::ios::cur);
-	if(boxType == "mdat") printf("mdat box ends at %llu with size %llu\n", (uint64_t) _stream.tellg(), boxSize);
 
 	return boxSize;
 }
@@ -246,9 +225,6 @@ void mp4Reader::extractSamples(int trackIndex) {
 
 	for(int i = 0; i < track._chunkOffsets.size(); i++) {
 		_stream.seekg(track._chunkOffsets[i], std::ios::beg);
-		//printf("chunk offset %u\n", track._chunkOffsets[i]);
-		//printf("%02x first byte in chunk\n", _stream.peek());
-		//print("samples per chunk %u\n", track._samplesPerChunk[i]);
 		for(int j = 0; j < buildSPC[i]; j++) {
 			if(sampleIndex >= track._sampleSizes.size()) {
 				printf("attempted to read too many samples\n");
@@ -262,28 +238,8 @@ void mp4Reader::extractSamples(int trackIndex) {
 		}
 	}
 
-	printf("extracted %d samples from trak %u\n", sampleIndex, track._trackID);
 }
 
-void mp4Reader::parseAAC(int trackIndex) {
-	std::vector<std::vector<uint8_t>> rawSamples = _samples[trackIndex];
-	/*
-	for(int j = 0; j < rawSamples.size(); j++) {
-		for(int i = 0; i < rawSamples[j].size(); i++) {
-			printf("%02x", rawSamples[j][i]);
-		}
-		printf("\n\n\n");
-	}
-	*/
-}
-
-void mp4Reader::handleAudio() {
-	for(int i = 0; i < _tracks.size(); i++) {
-		if(_tracks[i]._codec == "mp4a") {
-			parseAAC(i);
-		}
-	}
-}
 
 int readMP4(std::string fName) {
 	mp4Reader reader(fName);
@@ -291,8 +247,6 @@ int readMP4(std::string fName) {
 		printf("error reading mp4 data from file %s\n", fName.c_str()); 
 	}
 
-	reader.handleAudio();
-	
 	return 0;
 }
 

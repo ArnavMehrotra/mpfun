@@ -33,8 +33,7 @@ public:
 
 	uint64_t readBox();
 	void extractSamples(int trackIndex);
-	void handleAudio();
-	void parseAAC(int trackIndex);
+
 
 	mp4Reader(std::string fName) {		
 		_stream = std::ifstream(fName, std::ios::binary);
@@ -71,5 +70,16 @@ public:
 	}
 	
 	int getStatus() { return _status; }
+
+	std::vector<std::vector<uint8_t>> getAudioSamples() {
+		for(int i = 0; i < _tracks.size(); i++) {
+			if(_tracks[i]._codec == "mp4a") {
+				return _samples[i];
+			}
+		}
+
+		return std::vector<std::vector<uint8_t>>();
+
+	}
 
 };
