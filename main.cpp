@@ -47,8 +47,8 @@ std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames,
 		
 }
 
-int writeWAV(std::vector<float> data, uint32_t sampleRate, uint16_t bitsPerSample, uint16_t numChannels) {
-	std::ofstream out("out.wav", std::ios::binary);	
+int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, uint16_t bitsPerSample, uint16_t numChannels) {
+	std::ofstream out(fName, std::ios::binary);	
 
 	if(!out.is_open()) return -1;
 
@@ -147,8 +147,15 @@ int main(int argc, char** argv) {
 	printf("sample rate %d\n", sampleRate);
 	printf("bits per sample %d\n", bitsPerSample);
 	printf("audio is format %s\n", fmtName);
+	
+	if(argc > 1 && std::string(argv[1]) == "-sin") {
+		auto sin = sanitySin(880.0f, 2.0f, sampleRate, numChannels);
+		writeWAV("sin.wav", sin, sampleRate, bitsPerSample, numChannels);
+		filter(sin, sampleRate, 50.0f);
+		writeWAV("filtered.wav", sin, sampleRate, bitsPerSample, numChannels);
 
-	if(argc > 1 && std::string(argv[1]) == "-ffmpeg") {
+
+	} else if(argc > 1 && std::string(argv[1]) == "-ffmpeg") {
 
 		printf("reading file with with ffmpeg\n");
 		AVPacket *packet = av_packet_alloc();
@@ -176,10 +183,9 @@ int main(int argc, char** argv) {
 		decodedSamples = ffmpegDecompress(aacFrames, codecCtx);
 
 		printf("we got %zu total raw samples\n", decodedSamples.size());
+		writeWAV("out.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
-	}	
-
-	else {
+	} else {
 		//read the mp4 with my library
 		mp4Reader reader(fName);
 		if(reader.getStatus()) {
@@ -188,14 +194,20 @@ int main(int argc, char** argv) {
 		
 		auto myFrames = reader.getAudioSamples();
 		printf("I read %zu total frames\n", myFrames.size());
-
+		
 		//decompress audio samples with FFmpeg
 		decodedSamples = ffmpegDecompress(myFrames, codecCtx);
 		printf("we got %zu total raw samples\n", decodedSamples.size());
 
-	}	
+		writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
-	writeWAV(decodedSamples, sampleRate, bitsPerSample, numChannels);
+		filter(decodedSamples, sampleRate, 100.0f);
+
+		writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+
+	}
+
+
 
 	avformat_close_input(&formatCtx);
 	avformat_free_context(formatCtx);	
