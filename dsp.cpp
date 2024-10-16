@@ -32,3 +32,45 @@ void filter(std::vector<float>& audio, int sampleRate, float cutoff) {
 	}
 
 }
+
+void reverb(std::vector<float>& audio, int sampleRate, float delayTime, float decay) {
+	int delaySamples = static_cast<int>(delayTime * sampleRate);
+	std::vector<float> buff(audio.size(), 0.0f);
+
+	for(int i = 0; i < audio.size(); i++) {
+		buff[i] = audio[i];
+		if(i >= delaySamples) {
+			buff[i] += audio[i - delaySamples] * decay;
+		}
+	}
+
+	for(int i = 0; i < audio.size(); i++) {
+		audio[i] += buff[i];
+	}
+}
+
+void chorus(std::vector<float>& audio, int sampleRate, float depth, float rate, float delay, float wet) {
+	int delaySamples = static_cast<int>(delay * sampleRate);
+	std::vector<float> buff(audio.size(), 0.0f);
+
+	float lfoPhase = 0.0f;
+	float lfoStep = (2.0f * M_PI * rate) / sampleRate;
+
+	for(int i = 0; i < audio.size(); i++) {
+		int modDelay = static_cast<int>(delaySamples + (depth * delaySamples) + sinf(lfoPhase));
+		if(i >= modDelay) {
+			float wetSignal = audio[i - modDelay];
+			buff[i] = ((1.0f - wet) * audio[i]) + (wet * wetSignal); 
+
+		}
+		else {
+			buff[i] = audio[i];
+		}
+
+		lfoPhase += lfoStep;
+		if(lfoPhase > 2.0f * M_PI) lfoPhase -= (2.0f * M_PI);
+	}
+
+	audio = buff;
+
+}

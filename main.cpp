@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
 	if(argc > 1 && std::string(argv[1]) == "-sin") {
 		auto sin = sanitySin(880.0f, 2.0f, sampleRate, numChannels);
 		writeWAV("sin.wav", sin, sampleRate, bitsPerSample, numChannels);
-		filter(sin, sampleRate, 50.0f);
+		chorus(sin, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
 		writeWAV("filtered.wav", sin, sampleRate, bitsPerSample, numChannels);
 
 
@@ -202,6 +202,8 @@ int main(int argc, char** argv) {
 		writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
 		filter(decodedSamples, sampleRate, 100.0f);
+		chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
+		reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
 
 		writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
