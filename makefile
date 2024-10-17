@@ -1,5 +1,6 @@
 CC = /usr/bin/g++
-OBJS = main.o mp4Read.o dsp.o
+OBJS = main.o mp4Read.o dsp.o codec.o
+EXE = codec
 
 # Include FFmpeg libraries
 LIBS = libavformat libavcodec libavutil
@@ -11,8 +12,8 @@ CXXFLAGS = $(shell pkg-config --cflags $(LIBS)) -std=c++11
 	$(CC) -c $(CXXFLAGS) $< -o $@
 
 codec : $(OBJS)
-	$(CC) -o codec $(OBJS) $(LDFLAGS)
+	$(CC) -o $(EXE) $(OBJS) $(LDFLAGS)
 
 clean:
-	rm -rf $(OBJS) codec
+	rm -rf $(OBJS) $(EXE)
 
