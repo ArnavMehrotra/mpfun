@@ -1,5 +1,6 @@
 #include <vector>
 #include "codec.h"
+#include "dsp.h"
 
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx) {
 
@@ -31,6 +32,15 @@ std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames,
 	av_packet_unref(packet);
 	av_frame_unref(decodedFrame);
 
-	return decodedSamples;
-		
+	return decodedSamples;		
+}
+
+int mp3Compress(std::vector<float> samples) {
+    std::vector<float> windowedSamples = sinWindow(samples);
+
+    std::vector<float> mdctCoeffs = mdct(windowedSamples);
+    std::vector<float> scaleFactors(mdctCoeffs.size(), 1.0f);
+
+    std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
+    return 0;
 }

@@ -158,13 +158,15 @@ int main(int argc, char** argv) {
 		decodedSamples = ffmpegDecompress(myFrames, codecCtx);
 		printf("we got %zu total raw samples\n", decodedSamples.size());
 
-		writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+		//writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
 		filter(decodedSamples, sampleRate, 100.0f);
 		chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
 		reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
 
 		writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+
+		mp3Compress(decodedSamples);
 
 	}
 

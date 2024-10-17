@@ -14,6 +14,40 @@ std::vector<float> sanitySin(float frequency, float duration, int sampleRate, in
 	return wave;
 }
 
+std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<float> scaleFactors) {
+	std::vector<int> quantized(coeffs.size());
+	for(int i = 0; i < coeffs.size(); i++) {
+		quantized[i] = static_cast<int>(coeffs[i] / powf(2.0f, scaleFactors[i]));
+	}
+
+	return quantized;
+}
+
+std::vector<float> mdct(const std::vector<float>& samples) {
+	int n = samples.size();
+
+	printf("mdct %d samples\n", n);
+
+	std::vector<float> mdctOut(n / 2);
+	for(int i = 0; i < n / 2; i++) {
+		mdctOut[i] = 0.0f;
+		for(int j = 0; j < n; j++) {
+			mdctOut[i] += samples[j] * cosf((M_PI / n) * (j + 0.5f) * (i + 0.5f));
+		}
+	}
+
+	return mdctOut;
+}
+
+std::vector<float> sinWindow(const std::vector<float> samples) {
+	std::vector<float> windowedSamples(samples.size());
+	for(int i = 0; i < samples.size(); i++) {
+		windowedSamples[i] = samples[i] * sinf(M_PI * i / samples.size());
+	}
+
+	return windowedSamples;
+}
+
 void filter(std::vector<float>& audio, int sampleRate, float cutoff) {
 	//time constant
 	float rc = 1.0f / (2.0f * cutoff * M_PI);
