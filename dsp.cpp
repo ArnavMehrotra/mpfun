@@ -32,7 +32,7 @@ std::vector<float> mdct(const std::vector<float>& samples) {
 	for(int i = 0; i < n / 2; i++) {
 		mdctOut[i] = 0.0f;
 		for(int j = 0; j < n; j++) {
-			mdctOut[i] += samples[j] * cosf((M_PI / n) * (j + 0.5f) * (i + 0.5f));
+			mdctOut[i] += samples[j] * cosf((M_PI / n) * (j + 0.5f + (n / 2)) * (i + 0.5f));
 		}
 	}
 
