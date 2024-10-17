@@ -5,3 +5,4 @@ codec
 output.*
 out*
 *.wav
+.vscode

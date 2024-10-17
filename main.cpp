@@ -4,13 +4,7 @@
 #include "dsp.h"
 #include "codec.h"
 
-extern "C" {
-	#include <libavformat/avformat.h>
-	#include <libavcodec/avcodec.h>
-	#include <libavutil/opt.h>
-	#include <libavutil/samplefmt.h>
-	#include <libavutil/avutil.h>
-}
+//necessary FFmpeg includes are in codec.h
 
 int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, uint16_t bitsPerSample, uint16_t numChannels) {
 	std::ofstream out(fName, std::ios::binary);	

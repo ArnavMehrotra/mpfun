@@ -1,14 +1,6 @@
 #include <vector>
 #include "codec.h"
 
-extern "C" {
-	#include <libavformat/avformat.h>
-	#include <libavcodec/avcodec.h>
-	#include <libavutil/opt.h>
-	#include <libavutil/samplefmt.h>
-	#include <libavutil/avutil.h>
-}
-
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx) {
 
 	std::vector<float> decodedSamples;
