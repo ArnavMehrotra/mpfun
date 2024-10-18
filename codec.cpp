@@ -39,8 +39,24 @@ int mp3Compress(std::vector<float> samples) {
     std::vector<float> windowedSamples = sinWindow(samples);
 
     std::vector<float> mdctCoeffs = mdct(windowedSamples);
-    std::vector<float> scaleFactors(mdctCoeffs.size(), 1.0f);
 
+    float ogEnergy = 0.0f;
+    for(int i = 0; i < windowedSamples.size(); i++) {
+        ogEnergy += windowedSamples[i] * windowedSamples[i];
+    }
+
+    float mdctEnergy = 0.0f;
+    for(int i = 0; i < mdctCoeffs.size(); i++) {
+        mdctEnergy += mdctCoeffs[i] * mdctCoeffs[i];
+
+    }
+
+    printf("old numba: %.2f new numba: %.2f\n", ogEnergy, mdctEnergy);
+
+    //you can apply some scalefactors if you want
+    //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)
+    std::vector<float> scaleFactors(mdctCoeffs.size(), 1.0f);
     std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
+
     return 0;
 }

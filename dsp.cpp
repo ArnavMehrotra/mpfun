@@ -1,4 +1,7 @@
 #include <iostream>
+#include <vector>
+
+#define BLOCK_SIZE 512.0f
 
 std::vector<float> sanitySin(float frequency, float duration, int sampleRate, int numChannels) {
 	int numSamples = static_cast<int>(duration * sampleRate);
@@ -23,16 +26,25 @@ std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<flo
 	return quantized;
 }
 
-std::vector<float> mdct(const std::vector<float>& samples) {
-	int n = samples.size();
+std::vector<float> mdct(std::vector<float>& samples) {
 
-	printf("mdct %d samples\n", n);
+	//zero pad samples to have a clean number of blocks of 512 samples
+	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
+	samples.insert(samples.end(), padding, 0.0f);
 
-	std::vector<float> mdctOut(n / 2);
-	for(int i = 0; i < n / 2; i++) {
-		mdctOut[i] = 0.0f;
-		for(int j = 0; j < n; j++) {
-			mdctOut[i] += samples[j] * cosf((M_PI / n) * (j + 0.5f + (n / 2)) * (i + 0.5f));
+	std::vector<float> mdctOut(samples.size() / 2, 0.0f);
+	
+	//MDCT over Blocks of size 512
+	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
+		for(int j = 0; j < BLOCK_SIZE / 2; j++) {
+			for(int k = 0; k < BLOCK_SIZE; k++) {
+				//calculate partial mdct term and add to sum
+				float cosTerm = (M_PI / BLOCK_SIZE) * (k + 0.5f + (BLOCK_SIZE / 2.0f)) * (j + 0.5f);
+				mdctOut[(i * BLOCK_SIZE / 2) + j] += samples[(i * BLOCK_SIZE) + k] * cosf(cosTerm);
+			}
+
+			//scale MDCT coefficient to conserve energy (?)
+			mdctOut[(i * BLOCK_SIZE / 2) + j] /= (sqrt(BLOCK_SIZE / 2));
 		}
 	}
 
