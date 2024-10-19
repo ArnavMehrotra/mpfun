@@ -323,6 +323,6 @@ static const struct newhuff ht[] =
 
 static const struct newhuff htc[] = 
 {
- { /* 1 , 1 , */ 0 , tab_c0 } ,
- { /* 1 , 1 , */ 0 , tab_c1 }
+ { /* 1 , 1 , */ 0 , tabc0 } ,
+ { /* 1 , 1 , */ 0 , tabc1 }
 };
