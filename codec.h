@@ -1,3 +1,6 @@
+#ifndef CODEC_H
+#define CODEC_H
+
 #include <vector>
 
 #pragma once
@@ -12,3 +15,6 @@ extern "C" {
 
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx);
 int mp3Compress(std::vector<float> samples);
+
+
+#endif

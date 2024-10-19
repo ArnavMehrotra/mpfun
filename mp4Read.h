@@ -1,3 +1,6 @@
+#ifndef MP4READ_H
+#define MP4READ_H
+
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -83,3 +86,5 @@ public:
 	}
 
 };
+
+#endif
