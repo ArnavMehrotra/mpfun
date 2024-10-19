@@ -6,11 +6,11 @@
 
 ## Includes
 
+- **Reading MP4 Files**: Functions for opening and parsing audio data from MP4 files (video coming soon!).
 - **MDCT Transformations**: Utilities for converting PCM samples to the frequency domain using MDCT.
 - **PCM Quantization with Scaling**: A mechanism to scale PCM data before quantization, improving the precision of low-amplitude samples.
 - **Inverse MDCT (IMDCT)**: Functions for converting frequency-domain data back to the time domain.
-- **Ring Buffer Support**: A ring buffer implementation for managing continuous PCM sample streams.
-- **Audio Filters**: Basic audio filters such as **low-pass filtering** to apply effects to audio streams.
+- **Audio Effects**: Basic audio effects such as **low-pass filtering** **chorus** and **reverb** to apply effects to audio streams. More effects are under development.
 - **Utility Functions**: Includes helper functions for audio manipulation, scaling, and analysis.
 
 ## Installation
