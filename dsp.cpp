@@ -27,6 +27,12 @@ std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<flo
 	return quantized;
 }
 
+void scaleByConstant(std::vector<float>& samples, float c) {
+	for(int i = 0; i < samples.size(); i++) {
+		samples[i] *= c;
+	}
+}
+
 void sinWindow(std::vector<float>& samples, int start) {
 	for(int i = 0; i < BLOCK_SIZE; i++) {
 		samples[i + start] *= sinf(M_PI * i / BLOCK_SIZE);

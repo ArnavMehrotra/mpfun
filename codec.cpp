@@ -36,7 +36,18 @@ std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames,
 }
 
 int mp3Compress(std::vector<float> samples) {
-    
+
+    scaleByConstant(samples, 10.0f);
+
+    float rawEnergy = 0.0f;
+    int rawSmall = 0;
+    for(int i = 0; i < samples.size(); i++) {
+        if(fabs(samples[i]) < 0.01f) rawSmall++;
+        rawEnergy += samples[i] * samples[i];
+    }
+
+    printf("raw samples have energy %.2f, %d samples are < 0.01\n", rawEnergy, rawSmall);
+
     std::vector<float> mdctCoeffs = mdct(samples);
 
     float ogEnergy = 0.0f;
@@ -60,7 +71,6 @@ int mp3Compress(std::vector<float> samples) {
     std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
     std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
 
-    int code = 0;
     int check = 0;
     int zcount = 0;
 
@@ -70,6 +80,8 @@ int mp3Compress(std::vector<float> samples) {
     }
 
     printf("quant sum %d and %d 0s\n", check, zcount);
+
+    int code = 0;
 
     for(int i = 0; i < quantized.size(); i += 2) {
         code += huffmanCode(quantized[i], quantized[i + 1]);

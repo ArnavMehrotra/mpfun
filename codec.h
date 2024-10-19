@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#pragma once
+//include necessary c headers from ffmpeg and mp3 huffman coder
 extern "C" {
 	#include <libavformat/avformat.h>
 	#include <libavcodec/avcodec.h>
