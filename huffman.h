@@ -268,14 +268,14 @@ static const short tab24[] =
    0
 };
 
-static const short tab_c0[] =
+static const short tabc0[] =
 {
  -29, -21, -13,  -7,  -3,  -1,  11,  15,  -1,  13,  14,  -3,  -1,   7,   5,
    9,  -3,  -1,   6,   3,  -1,  10,  12,  -3,  -1,   2,   1,  -1,   4,   8,
    0
 };
 
-static const short tab_c1[] =
+static const short tabc1[] =
 {
  -15,  -7,  -3,  -1,  15,  14,  -1,  13,  12,  -3,  -1,  11,  10,  -1,   9,
    8,  -7,  -3,  -1,   7,   6,  -1,   5,   4,  -3,  -1,   3,   2,  -1,   1,
