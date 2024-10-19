@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #define BLOCK_SIZE 512.0f
 
@@ -20,7 +21,7 @@ std::vector<float> sanitySin(float frequency, float duration, int sampleRate, in
 std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<float> scaleFactors) {
 	std::vector<int> quantized(coeffs.size());
 	for(int i = 0; i < coeffs.size(); i++) {
-		quantized[i] = static_cast<int>(coeffs[i] / powf(2.0f, scaleFactors[i]));
+		quantized[i] = roundf(coeffs[i]) / 2.0f;
 	}
 
 	return quantized;
@@ -28,7 +29,26 @@ std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<flo
 
 void sinWindow(std::vector<float>& samples, int start) {
 	for(int i = 0; i < BLOCK_SIZE; i++) {
-		samples[i + start] = samples[i + start] * sinf(M_PI * i / BLOCK_SIZE);
+		samples[i + start] *= sinf(M_PI * i / BLOCK_SIZE);
+	}
+}
+
+void hannWindow(std::vector<float>& samples, int start) {
+	for(int i = 0; i < BLOCK_SIZE; i++) {
+		samples[i + start] *= 0.5f * (1 - cosf(2 * M_PI * i / BLOCK_SIZE));
+	}
+}
+
+void hammingWindow(std::vector<float>& samples, int start) {
+	for(int i = 0; i < BLOCK_SIZE; i++) {
+		samples[i + start] *= (0.54f - (0.46f * cosf(2 * M_PI * i / BLOCK_SIZE)));
+	}
+}
+
+
+void blackmanWindow(std::vector<float>& samples, int start) {
+	for(int i = 0; i < BLOCK_SIZE; i++) {
+		samples[i + start] *= (0.54f - (0.46f * cosf(2 * M_PI * i / BLOCK_SIZE)) + (0.08f * cosf(4 * M_PI * i / BLOCK_SIZE)));
 	}
 }
 
@@ -45,8 +65,17 @@ std::vector<float> mdct(std::vector<float>& samples) {
 
 	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
 
+	auto startTime = std::chrono::high_resolution_clock::now();
+
 	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
-		sinWindow(samples, i * BLOCK_SIZE);
+		//pick your favorite window function
+
+		//sinWindow(samples, i * BLOCK_SIZE);
+		//blackmanWindow(samples, i * BLOCK_SIZE);
+		//hannWindow(samples, i * BLOCK_SIZE);
+
+		hammingWindow(samples, i * BLOCK_SIZE);
+
 		for(int j = 0; j < BLOCK_SIZE / 2; j++) {
 			for(int k = 0; k < BLOCK_SIZE; k++) {
 				//calculate partial mdct term and add to sum
@@ -58,6 +87,12 @@ std::vector<float> mdct(std::vector<float>& samples) {
 			mdctOut[(i * BLOCK_SIZE / 2) + j] /= scaleFactor;
 		}
 	}
+
+	auto stopTime = std::chrono::high_resolution_clock::now();
+	auto micros = std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime);
+	float duration = (float) micros.count() / (1000);
+
+	printf("applied mdct to %zu samples in %.2f ms\n", samples.size(), duration);
 
 	return mdctOut;
 }

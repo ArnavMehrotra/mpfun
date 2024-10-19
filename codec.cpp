@@ -44,17 +44,38 @@ int mp3Compress(std::vector<float> samples) {
         ogEnergy += samples[i] * samples[i];
     }
 
+    int smolct = 0;
+
     float mdctEnergy = 0.0f;
     for(int i = 0; i < mdctCoeffs.size(); i++) {
         mdctEnergy += mdctCoeffs[i] * mdctCoeffs[i];
+        if(fabs(mdctCoeffs[i]) < 1) smolct++;
     }
 
-    printf("old energy: %.2f new energy: %.2f\n", ogEnergy, mdctEnergy);
+
+    printf("old energy: %.2f new energy: %.2f %d small terms\n", ogEnergy, mdctEnergy, smolct);
 
     //you can apply some scalefactors if you want
     //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)
-    std::vector<float> scaleFactors(mdctCoeffs.size(), 1.0f);
+    std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
     std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
+
+    int code = 0;
+    int check = 0;
+    int zcount = 0;
+
+    for(int i = 0; i < quantized.size(); i++) {
+        if(quantized[i] == 0) zcount++;
+        check += abs(quantized[i]);
+    }
+
+    printf("quant sum %d and %d 0s\n", check, zcount);
+
+    for(int i = 0; i < quantized.size(); i += 2) {
+        code += huffmanCode(quantized[i], quantized[i + 1]);
+    }
+
+    printf("code sum %d\n", code);
 
     return 0;
 }

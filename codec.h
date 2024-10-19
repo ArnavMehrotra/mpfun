@@ -7,6 +7,7 @@ extern "C" {
 	#include <libavutil/opt.h>
 	#include <libavutil/samplefmt.h>
 	#include <libavutil/avutil.h>
+	#include "huffman.h"
 }
 
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx);

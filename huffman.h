@@ -1,9 +1,22 @@
+#ifndef HUFFMAN_H
+#define HUFFMAN_H
 //HUFFMAN TABELES FROM:
 //https://github.com/rbrito/deprecated-lame-mirror/blob/master/mpglib/huffman.h
 
 
 #include <stdlib.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Your function declaration here
+int huffmanCode(int x, int y);
+
+#ifdef __cplusplus
+}
+#endif
 
 struct newhuff 
 {
@@ -326,3 +339,6 @@ static const struct newhuff htc[] =
  { /* 1 , 1 , */ 0 , tabc0 } ,
  { /* 1 , 1 , */ 0 , tabc1 }
 };
+
+
+#endif
