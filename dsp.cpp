@@ -26,16 +26,27 @@ std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<flo
 	return quantized;
 }
 
-std::vector<float> mdct(std::vector<float>& samples) {
+void sinWindow(std::vector<float>& samples, int start) {
+	for(int i = 0; i < BLOCK_SIZE; i++) {
+		samples[i + start] = samples[i + start] * sinf(M_PI * i / BLOCK_SIZE);
+	}
+}
 
+std::vector<float> mdct(std::vector<float>& samples) {
 	//zero pad samples to have a clean number of blocks of 512 samples
 	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
-	samples.insert(samples.end(), padding, 0.0f);
-
+	if(padding) {
+		samples.insert(samples.end(), BLOCK_SIZE - padding, 0.0f);
+	}
+	
 	std::vector<float> mdctOut(samples.size() / 2, 0.0f);
 	
 	//MDCT over Blocks of size 512
+
+	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
+
 	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
+		sinWindow(samples, i * BLOCK_SIZE);
 		for(int j = 0; j < BLOCK_SIZE / 2; j++) {
 			for(int k = 0; k < BLOCK_SIZE; k++) {
 				//calculate partial mdct term and add to sum
@@ -44,20 +55,11 @@ std::vector<float> mdct(std::vector<float>& samples) {
 			}
 
 			//scale MDCT coefficient to conserve energy (?)
-			mdctOut[(i * BLOCK_SIZE / 2) + j] /= (sqrt(BLOCK_SIZE / 2));
+			mdctOut[(i * BLOCK_SIZE / 2) + j] /= scaleFactor;
 		}
 	}
 
 	return mdctOut;
-}
-
-std::vector<float> sinWindow(const std::vector<float> samples) {
-	std::vector<float> windowedSamples(samples.size());
-	for(int i = 0; i < samples.size(); i++) {
-		windowedSamples[i] = samples[i] * sinf(M_PI * i / samples.size());
-	}
-
-	return windowedSamples;
 }
 
 void filter(std::vector<float>& audio, int sampleRate, float cutoff) {

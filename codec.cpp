@@ -36,22 +36,20 @@ std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames,
 }
 
 int mp3Compress(std::vector<float> samples) {
-    std::vector<float> windowedSamples = sinWindow(samples);
-
-    std::vector<float> mdctCoeffs = mdct(windowedSamples);
+    
+    std::vector<float> mdctCoeffs = mdct(samples);
 
     float ogEnergy = 0.0f;
-    for(int i = 0; i < windowedSamples.size(); i++) {
-        ogEnergy += windowedSamples[i] * windowedSamples[i];
+    for(int i = 0; i < samples.size(); i++) {
+        ogEnergy += samples[i] * samples[i];
     }
 
     float mdctEnergy = 0.0f;
     for(int i = 0; i < mdctCoeffs.size(); i++) {
         mdctEnergy += mdctCoeffs[i] * mdctCoeffs[i];
-
     }
 
-    printf("old numba: %.2f new numba: %.2f\n", ogEnergy, mdctEnergy);
+    printf("old energy: %.2f new energy: %.2f\n", ogEnergy, mdctEnergy);
 
     //you can apply some scalefactors if you want
     //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)

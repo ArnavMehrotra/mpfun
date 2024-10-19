@@ -160,6 +160,7 @@ int main(int argc, char** argv) {
 
 		//writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
+		//apply some effects
 		filter(decodedSamples, sampleRate, 100.0f);
 		chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
 		reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
