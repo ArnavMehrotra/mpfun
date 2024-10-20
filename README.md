@@ -18,11 +18,16 @@
 1. Clone the repository:
 
    git clone https://github.com/ArnavMehrotra/mpfun.git
+
    cd mpfun
 
 2. Build (requires FFMpeg on a Unix based system):
+
     make
 
-3. Enjoy!
+3. Run it!
 
-**Feel free to use any source code or huffman tables to write your own codec.**
+    ./codec
+
+## Feel free to use any source code or huffman tables to write your own codec.
+## This repository is for educational purposes!

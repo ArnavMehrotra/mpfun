@@ -138,6 +138,7 @@ void reverb(std::vector<float>& audio, int sampleRate, float delayTime, float de
 	}
 }
 
+//TODO:: figure out why this doesn't work (well) with certain wet values
 void chorus(std::vector<float>& audio, int sampleRate, float depth, float rate, float delay, float wet) {
 	int delaySamples = static_cast<int>(delay * sampleRate);
 	std::vector<float> buff(audio.size(), 0.0f);
