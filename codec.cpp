@@ -6,14 +6,6 @@
 #define MP3_BUFFER_SIZE 8192
 
 
-struct pairHash {
-    template <class T1, class T2>
-    std::size_t operator () (const std::pair<T1, T2>& pair) const {
-        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
-    }
-};
-
-
 //decode headerless (or headered?) AAC frames into raw PCM data using FFmpeg
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx) {
 
@@ -126,9 +118,9 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
     return mp3Stream;
 }
 
-//compress and code raw PCM samples into bitstream for MP3 file data
+//compress and code raw PCM samples into a lossy compressed format like MP3, only worse
 //TODO:: we're losing too much data! fix it!
-int mp3Compress(std::vector<float> samples) {
+int lossyCompress(std::vector<float> samples) {
     
     scalePCM(samples);
 
@@ -174,26 +166,6 @@ int mp3Compress(std::vector<float> samples) {
 
     printf("quant sum %d and %d 0s\n", check, zcount);
 
-    int code = 0;
     
-    std::unordered_map<std::pair<int, int>, int, pairHash> codeCache;
-
-    for(int i = 0; i < quantized.size(); i += 2) {
-        std::pair<int, int> key = std::make_pair(abs(quantized[i]), abs(quantized[i + 1]));
-        if(codeCache.find(key) != codeCache.end()) {
-            code += codeCache[key];
-            continue;
-        }
-
-        printf("coding %d and %d\n", quantized[i], quantized[i + 1]);
-
-        int newCode = huffmanCode(quantized[i], quantized[i + 1]);
-
-        code += newCode;
-        codeCache[key] = newCode;
-    }
-
-    printf("code sum %d\n", code);
-
     return 0;
 }
