@@ -2,32 +2,18 @@
 
 ## Overview
 
-**MPFun** is a library designed for audio processing, specifically targeting operations involving **PCM (Pulse Code Modulation)** data, **MDCT (Modified Discrete Cosine Transform)**, and **quantization** of audio samples. This repository includes utilities and tools for handling transformations, scaling, and quantization, with the aim of preserving low-amplitude details during the compression process.
+**MPFun** is a reference demonstrating various techniques required to work with digital audio. These techniques include: reading files, compression, and hopefully other things, soon. 
 
-## Includes
+The **MDCT** (found in dsp.cpp) and **Huffman Coding** (found in huffman.c) algorithms included are very slow, and should not be used by anyone. Ever. The purpose of this is to keep the code readable enough to understand what is going on from a math and DSP perspective, which is not the case in most hyperoptimized modern codecs.
+
+## Currently Includes
 
 - **Reading MP4 Files**: Functions for opening and parsing audio data from MP4 files (video coming soon!).
 - **MDCT Transformations**: Utilities for converting PCM samples to the frequency domain using MDCT.
+- **(Broken) Huffman Coding**: Example of huffman coding for MP3 Compression.
+- **MP3 Compression**: Convert raw PCM audio to an encoded MP3 file.
 - **PCM Quantization with Scaling**: A mechanism to scale PCM data before quantization, improving the precision of low-amplitude samples.
-- **Inverse MDCT (IMDCT)**: Functions for converting frequency-domain data back to the time domain.
 - **Audio Effects**: Basic audio effects such as **low-pass filtering** **chorus** and **reverb** to apply effects to audio streams. More effects are under development.
 - **Utility Functions**: Includes helper functions for audio manipulation, scaling, and analysis.
 
-## Installation
-
-1. Clone the repository:
-
-   git clone https://github.com/ArnavMehrotra/mpfun.git
-
-   cd mpfun
-
-2. Build (requires FFMpeg on a Unix based system):
-
-    make
-
-3. Run it!
-
-    ./codec
-
-## Feel free to use any source code or huffman tables to write your own codec.
 ## This repository is for educational purposes!
