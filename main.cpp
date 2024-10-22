@@ -4,8 +4,23 @@
 #include "dsp.h"
 #include "codec.h"
 
-//necessary FFmpeg includes are in codec.h
 
+int writeMp3(std::string fName, std::vector<char> data) {
+	std::ofstream out(fName, std::ios::binary);
+
+
+	if(!out.is_open()) return -1;
+
+	out.write(data.data(), data.size());
+
+	int bytesWritten = out.tellp();
+
+	out.close();
+
+	return bytesWritten;
+}
+
+//necessary FFmpeg includes are in codec.h
 int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, uint16_t bitsPerSample, uint16_t numChannels) {
 	std::ofstream out(fName, std::ios::binary);	
 
@@ -160,14 +175,21 @@ int main(int argc, char** argv) {
 
 		//writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
-		//apply some effects
+		//apply some effects and write to wav
 		filter(decodedSamples, sampleRate, 100.0f);
 		chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
 		reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
 
 		writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
-		mp3Compress(decodedSamples);
+		//compress and write to mp3
+
+		//mp3Compress(decodedSamples);
+		std::vector<char> mp3Bytes = lameCompress(decodedSamples, numChannels, sampleRate);
+
+		std::string mp3Name = "out.mp3";
+		int mp3Size = writeMp3("out.mp3", mp3Bytes);
+		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
 
 	}
 

@@ -6,8 +6,13 @@ EXE = codec
 # Include FFmpeg libraries
 LIBS = libavformat libavcodec libavutil
 
-LDFLAGS = $(shell pkg-config --libs $(LIBS))
-CXXFLAGS = $(shell pkg-config --cflags $(LIBS)) -std=c++11
+
+LAMELD = -L/opt/homebrew/Cellar/lame/3.100/lib -lmp3lame
+LAMECXX = -I/opt/homebrew/include/lame
+
+LDFLAGS = $(shell pkg-config --libs $(LIBS)) $(LAMELD)
+CXXFLAGS = $(shell pkg-config --cflags $(LIBS)) $(LAMECXX) -std=c++11
+
 
 %.o : %.c
 	$(CC) -c $< -o $@
@@ -20,4 +25,3 @@ codec : $(OBJS)
 
 clean:
 	rm -rf $(OBJS) $(EXE)
-

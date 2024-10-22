@@ -41,7 +41,7 @@ int selectTable(int x, int y) {
     return lookup[6];  // Default (for values greater than 31)
 }
 
-//TODO:: speedup! this is too slow for even regular sized WAV files
+//TODO:: this is beyond broken
 int huffmanCode(int x, int y) {
     x = abs(x);
     y = abs(y);
