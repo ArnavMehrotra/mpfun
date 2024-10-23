@@ -190,7 +190,7 @@ uint64_t mp4Reader::readBox() {
 		_stream.seekg(offset, std::ios::cur);
 		bytesRead += offset;
 	
-		//TODO: PARSE ESDS BOX TO GET SAMPLE RATE, CHANNELS, AND "PROFILE" THESE ARE HARD CODED IN PARSE AAC RIGHT NOW
+		//TODO PARSE ESDS BOX TO GET SAMPLE RATE, CHANNELS, AND "PROFILE" THESE ARE HARD CODED IN PARSE AAC RIGHT NOW
 		readString(_stream, 4);
 		bytesRead += 4;
 	} else if(boxType == "avc1") {

@@ -55,6 +55,7 @@ int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, ui
 	return 0;
 }
 
+//TODO remove opening ffmpeg avcodec with file, pass the information from my mp4 parser instead
 int main(int argc, char** argv) {
 	std::string fName("whereisshe.mp4");
 
@@ -187,9 +188,17 @@ int main(int argc, char** argv) {
 		//mp3Compress(decodedSamples);
 		std::vector<char> mp3Bytes = lameCompress(decodedSamples, numChannels, sampleRate);
 
+
 		std::string mp3Name = "out.mp3";
 		int mp3Size = writeMp3("out.mp3", mp3Bytes);
 		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
+
+		lossyCompress(decodedSamples);
+		printf("%zu", decodedSamples.size());
+
+		writeWAV("inversed.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+
+		// writeWav(decodedSamples);
 
 	}
 

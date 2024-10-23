@@ -17,7 +17,7 @@ extern "C" {
 
 std::vector<char> lameCompress(std::vector<float> samples, int channels, int sampleRate);
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx);
-int lossyCompress(std::vector<float> samples);
+int lossyCompress(std::vector<float>& samples);
 
 
 #endif

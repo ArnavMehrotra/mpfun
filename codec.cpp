@@ -119,8 +119,8 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
 }
 
 //compress and code raw PCM samples into a lossy compressed format like MP3, only worse
-//TODO:: we're losing too much data! fix it!
-int lossyCompress(std::vector<float> samples) {
+//TODO we're losing too much data! fix it!
+int lossyCompress(std::vector<float>& samples) {
     
     scalePCM(samples);
 
@@ -131,40 +131,38 @@ int lossyCompress(std::vector<float> samples) {
         rawEnergy += samples[i] * samples[i];
     }
 
-    printf("raw samples have energy %.2f, %d samples are < 0.01\n", rawEnergy, rawSmall);
-
     std::vector<float> mdctCoeffs = mdct(samples);
 
-    float ogEnergy = 0.0f;
+    std::vector<float> inverse = imdct(mdctCoeffs);
+
+    int wrongCt = 0;
     for(int i = 0; i < samples.size(); i++) {
-        ogEnergy += samples[i] * samples[i];
+        float originalPCM = samples[i] /32767.0f;
+        float newPCM = inverse[i] /32767.0f;
+        if((originalPCM) - (newPCM) > 0.1f) {
+            //printf("had: %.2f got: %.2f\n", originalPCM, newPCM);
+            wrongCt++;
+        }
     }
 
-    int smolct = 0;
+    printf("%d samples differ when apply mdct and inversing\n", wrongCt);
 
-    float mdctEnergy = 0.0f;
-    for(int i = 0; i < mdctCoeffs.size(); i++) {
-        mdctEnergy += mdctCoeffs[i] * mdctCoeffs[i];
-        if(fabs(mdctCoeffs[i]) < 1) smolct++;
-    }
-
-
-    printf("old energy: %.2f new energy: %.2f %d small terms\n", ogEnergy, mdctEnergy, smolct);
+    samples = inverse;
 
     //you can apply some scalefactors if you want
     //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)
-    std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
-    std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
+    // std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
+    // std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
 
-    int check = 0;
-    int zcount = 0;
+    // int check = 0;
+    // int zcount = 0;
 
-    for(int i = 0; i < quantized.size(); i++) {
-        if(quantized[i] == 0) zcount++;
-        check += abs(quantized[i]);
-    }
+    // for(int i = 0; i < quantized.size(); i++) {
+    //     if(quantized[i] == 0) zcount++;
+    //     check += abs(quantized[i]);
+    // }
 
-    printf("quant sum %d and %d 0s\n", check, zcount);
+    // printf("quant sum %d and %d 0s\n", check, zcount);
 
     
     return 0;

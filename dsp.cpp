@@ -58,6 +58,8 @@ void blackmanWindow(std::vector<float>& samples, int start) {
 	}
 }
 
+
+//TODO why not inversable?
 std::vector<float> mdct(std::vector<float>& samples) {
 	//zero pad samples to have a clean number of blocks of 512 samples
 	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
@@ -71,8 +73,6 @@ std::vector<float> mdct(std::vector<float>& samples) {
 
 	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
 
-	auto startTime = std::chrono::high_resolution_clock::now();
-
 	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
 		//pick your favorite window function
 
@@ -80,8 +80,9 @@ std::vector<float> mdct(std::vector<float>& samples) {
 		//blackmanWindow(samples, i * BLOCK_SIZE);
 		//hannWindow(samples, i * BLOCK_SIZE);
 
-		hammingWindow(samples, i * BLOCK_SIZE);
+		// hammingWindow(samples, i * BLOCK_SIZE);
 
+		//for every sample in the block, iterate over every other sample in the block
 		for(int j = 0; j < BLOCK_SIZE / 2; j++) {
 			for(int k = 0; k < BLOCK_SIZE; k++) {
 				//calculate partial mdct term and add to sum
@@ -94,13 +95,39 @@ std::vector<float> mdct(std::vector<float>& samples) {
 		}
 	}
 
-	auto stopTime = std::chrono::high_resolution_clock::now();
-	auto micros = std::chrono::duration_cast<std::chrono::microseconds>(stopTime - startTime);
-	float duration = (float) micros.count() / (1000);
-
-	printf("applied mdct to %zu samples in %.2f ms\n", samples.size(), duration);
+	printf("applied mdct to %zu samples\n", samples.size());
 
 	return mdctOut;
+}
+
+//TODO make match up with mdct!
+std::vector<float> imdct(std::vector<float>& samples) {
+	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
+	if(padding) {
+		samples.insert(samples.end(), BLOCK_SIZE - padding, 0.0f);
+	}
+
+	std::vector<float> imdctOut(samples.size() * 2);
+
+
+	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
+
+	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
+		
+		//for every mdct coefficient in the block, iterate over every other coefficient in the block
+		for(int j = 0; j < BLOCK_SIZE; j++) {
+			for(int k = 0; k < BLOCK_SIZE;k++) {	
+				float pcm = samples[(i * BLOCK_SIZE) + k] / scaleFactor;
+				for(int l = 0; l < 2; l++) {
+					float cosTerm = (M_PI / BLOCK_SIZE) * (k + (BLOCK_SIZE / 2) + 0.5f) * (k + 0.5f);
+					imdctOut[(i * BLOCK_SIZE * 2) + j + l] += pcm * cosf(cosTerm) * (2 / BLOCK_SIZE);
+				}
+			}
+
+		}
+	}
+
+	return imdctOut;
 }
 
 void filter(std::vector<float>& audio, int sampleRate, float cutoff) {
@@ -138,7 +165,7 @@ void reverb(std::vector<float>& audio, int sampleRate, float delayTime, float de
 	}
 }
 
-//TODO:: figure out why this doesn't work (well) with certain wet values
+//TODO figure out why this doesn't work (well) with certain wet values
 void chorus(std::vector<float>& audio, int sampleRate, float depth, float rate, float delay, float wet) {
 	int delaySamples = static_cast<int>(delay * sampleRate);
 	std::vector<float> buff(audio.size(), 0.0f);
