@@ -124,46 +124,25 @@ int lossyCompress(std::vector<float>& samples) {
     
     scalePCM(samples);
 
-    float rawEnergy = 0.0f;
-    int rawSmall = 0;
-    for(int i = 0; i < samples.size(); i++) {
-        if(fabs(samples[i]) < 0.01f) rawSmall++;
-        rawEnergy += samples[i] * samples[i];
-    }
-
     std::vector<float> mdctCoeffs = mdct(samples);
 
     std::vector<float> inverse = imdct(mdctCoeffs);
 
-    int wrongCt = 0;
+    float mse = 0.0f;
     for(int i = 0; i < samples.size(); i++) {
-        float originalPCM = samples[i] /32767.0f;
-        float newPCM = inverse[i] /32767.0f;
-        if((originalPCM) - (newPCM) > 0.1f) {
-            //printf("had: %.2f got: %.2f\n", originalPCM, newPCM);
-            wrongCt++;
-        }
+        float originalPCM = samples[i];
+        float newPCM = inverse[i];
+        mse += (originalPCM - newPCM) * (originalPCM - newPCM);
     }
-
-    printf("%d samples differ when apply mdct and inversing\n", wrongCt);
-
-    samples = inverse;
+    
+    mse /= samples.size();
+    printf("MSE for mdct and imdct: %.2f\n", mse);
 
     //you can apply some scalefactors if you want
     //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)
+
     // std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
     // std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
 
-    // int check = 0;
-    // int zcount = 0;
-
-    // for(int i = 0; i < quantized.size(); i++) {
-    //     if(quantized[i] == 0) zcount++;
-    //     check += abs(quantized[i]);
-    // }
-
-    // printf("quant sum %d and %d 0s\n", check, zcount);
-
-    
     return 0;
 }

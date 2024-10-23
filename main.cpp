@@ -194,7 +194,6 @@ int main(int argc, char** argv) {
 		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
 
 		lossyCompress(decodedSamples);
-		printf("%zu", decodedSamples.size());
 
 		writeWAV("inversed.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
