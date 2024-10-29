@@ -10,8 +10,11 @@ LIBS = libavformat libavcodec libavutil
 LAMELD = -L/opt/homebrew/Cellar/lame/3.100/lib -lmp3lame
 LAMECXX = -I/opt/homebrew/include/lame
 
-LDFLAGS = $(shell pkg-config --libs $(LIBS)) $(LAMELD)
-CXXFLAGS = $(shell pkg-config --cflags $(LIBS)) $(LAMECXX) -std=c++11
+FFTWLD = -L/opt/homebrew/Cellar/fftw/3.3.10_1/lib -lfftw3
+FFTWCXX = -I/opt/homebrew/include/
+
+LDFLAGS = $(shell pkg-config --libs $(LIBS)) $(LAMELD) $(FFTWLD)
+CXXFLAGS = $(shell pkg-config --cflags $(LIBS)) $(LAMECXX) $(FFTWCXX) -std=c++11
 
 
 %.o : %.c

@@ -2,7 +2,6 @@
 #include <vector>
 #include <chrono>
 
-#define BLOCK_SIZE 512.0f
 
 std::vector<float> sanitySin(float frequency, float duration, int sampleRate, int numChannels) {
 	int numSamples = static_cast<int>(duration * sampleRate);
@@ -33,99 +32,83 @@ void scaleByConstant(std::vector<float>& samples, float c) {
 	}
 }
 
-void sinWindow(std::vector<float>& samples, int start) {
-	for(int i = 0; i < BLOCK_SIZE; i++) {
-		samples[i + start] *= sinf(M_PI * i / BLOCK_SIZE);
+template<typename T>
+void sinWindow(std::vector<T>& samples) {
+	int N = samples.size();
+	for(int i = 0; i < N; i++) {
+		samples[i] *= static_cast<T>(sin(M_PI * i / N));
 	}
 }
 
-void hannWindow(std::vector<float>& samples, int start) {
-	for(int i = 0; i < BLOCK_SIZE; i++) {
-		samples[i + start] *= 0.5f * (1 - cosf(2 * M_PI * i / BLOCK_SIZE));
+void hannWindow(std::vector<float>& samples) {
+	int N = samples.size();
+	for(int i = 0; i < N; i++) {
+		samples[i] *= 0.5f * (1 - cosf(2 * M_PI * i / N));
 	}
 }
 
-void hammingWindow(std::vector<float>& samples, int start) {
-	for(int i = 0; i < BLOCK_SIZE; i++) {
-		samples[i + start] *= (0.54f - (0.46f * cosf(2 * M_PI * i / BLOCK_SIZE)));
+void hammingWindow(std::vector<float>& samples) {
+	int N = samples.size();
+	for(int i = 0; i < N; i++) {
+		samples[i] *= (0.54f - (0.46f * cosf(2 * M_PI * i / N)));
 	}
 }
 
 
-void blackmanWindow(std::vector<float>& samples, int start) {
-	for(int i = 0; i < BLOCK_SIZE; i++) {
-		samples[i + start] *= (0.54f - (0.46f * cosf(2 * M_PI * i / BLOCK_SIZE)) + (0.08f * cosf(4 * M_PI * i / BLOCK_SIZE)));
+void blackmanWindow(std::vector<float>& samples) {
+	int N = samples.size();
+	for(int i = 0; i < N; i++) {
+		samples[i] *= (0.54f - (0.46f * cosf(2 * M_PI * i / N)) + (0.08f * cosf(4 * M_PI * i / N)));
 	}
 }
 
 
 //TODO why not inversable?
-std::vector<float> mdct(std::vector<float>& samples) {
-	//zero pad samples to have a clean number of blocks of 512 samples
-	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
-	if(padding) {
-		samples.insert(samples.end(), BLOCK_SIZE - padding, 0.0f);
-	}
-	
-	std::vector<float> mdctOut(samples.size() / 2, 0.0f);
-	
-	//MDCT over Blocks of size 512
+std::vector<float> mdct(std::vector<float> samples) {
+	//zero pad samples
+	if(samples.size() % 2) samples.push_back(0.0f);
 
-	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
+	const float N = samples.size();
+	const float piOverN = M_PI / N;
+	const float halfN = N / 2;
 
-	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
-		//pick your favorite window function
+	std::vector<float> mdctOut(N / 2, 0.0f);
 
-		//sinWindow(samples, i * BLOCK_SIZE);
-		//blackmanWindow(samples, i * BLOCK_SIZE);
-		//hannWindow(samples, i * BLOCK_SIZE);
+	hammingWindow(samples);
 
-		// hammingWindow(samples, i * BLOCK_SIZE);
-
-		//for every sample in the block, iterate over every other sample in the block
-		for(int j = 0; j < BLOCK_SIZE / 2; j++) {
-			for(int k = 0; k < BLOCK_SIZE; k++) {
-				//calculate partial mdct term and add to sum
-				float cosTerm = (M_PI / BLOCK_SIZE) * (k + 0.5f + (BLOCK_SIZE / 2.0f)) * (j + 0.5f);
-				mdctOut[(i * BLOCK_SIZE / 2) + j] += samples[(i * BLOCK_SIZE) + k] * cosf(cosTerm);
-			}
-
-			//scale MDCT coefficient to conserve energy (?)
-			mdctOut[(i * BLOCK_SIZE / 2) + j] /= scaleFactor;
+	for(int k = 0; k < N / 2; k++) {
+		for(int n = 0; n < N; n++) {
+			float cosTerm = piOverN * (n + 0.5f + halfN) * (k + 0.5f);
+			mdctOut[k] += samples[n] * cosf(cosTerm);	
 		}
+
+		mdctOut[k] /= 1.24f;
 	}
 
-	printf("applied mdct to %zu samples\n", samples.size());
+	printf("applied mdct to %.2f samples\n", N);
 
 	return mdctOut;
 }
 
 //TODO make match up with mdct!
-std::vector<float> imdct(std::vector<float>& samples) {
-	size_t padding = samples.size() % static_cast<int>(BLOCK_SIZE);
-	if(padding) {
-		samples.insert(samples.end(), BLOCK_SIZE - padding, 0.0f);
-	}
+std::vector<float> imdct(std::vector<float> samples) {
 
-	std::vector<float> imdctOut(samples.size() * 2);
+	const float N = samples.size();
+	const float halfN = N / 2;
+	const float piOverN = M_PI / N;
 
+	std::vector<float> imdctOut(N * 2, 0.0f);
 
-	const float scaleFactor = sqrt(BLOCK_SIZE / 2);
-
-	for(int i = 0; i < samples.size() / BLOCK_SIZE; i++) {
-		
-		//for every mdct coefficient in the block, iterate over every other coefficient in the block
-		for(int j = 0; j < BLOCK_SIZE; j++) {
-			for(int k = 0; k < BLOCK_SIZE;k++) {	
-				float pcm = samples[(i * BLOCK_SIZE) + k] / scaleFactor;
-				for(int l = 0; l < 2; l++) {
-					float cosTerm = (M_PI / BLOCK_SIZE) * (k + (BLOCK_SIZE / 2) + 0.5f) * (k + 0.5f);
-					imdctOut[(i * BLOCK_SIZE * 2) + j + l] += pcm * cosf(cosTerm) * (2 / BLOCK_SIZE);
-				}
-			}
-
+	for(int n = 0; n < N * 2; n++) {
+		for(int k = 0; k < N; k++) {
+			float cosTerm = piOverN * (n + 0.5f + halfN) * (k + 0.5f);
+			imdctOut[n] += samples[k] * cosf(cosTerm);
 		}
+
+		imdctOut[n] /= N;
 	}
+
+	hammingWindow(imdctOut);
 
 	return imdctOut;
 }

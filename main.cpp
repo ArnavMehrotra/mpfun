@@ -193,10 +193,9 @@ int main(int argc, char** argv) {
 		int mp3Size = writeMp3("out.mp3", mp3Bytes);
 		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
 
-		lossyCompress(decodedSamples);
+		auto sinWave = sanitySin(440.0f, 0.1f, sampleRate, 2);
 
-		writeWAV("inversed.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
-
+		lossyCompress(sinWave);
 		// writeWav(decodedSamples);
 
 	}

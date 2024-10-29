@@ -12,12 +12,14 @@ extern "C" {
 	#include <libavutil/avutil.h>
 	#include <lame.h>
 
+	#include <fftw3.h>
+
 	#include "huffman.h"
 }
 
 std::vector<char> lameCompress(std::vector<float> samples, int channels, int sampleRate);
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx);
-int lossyCompress(std::vector<float>& samples);
+int lossyCompress(const std::vector<float> samples);
 
 
 #endif

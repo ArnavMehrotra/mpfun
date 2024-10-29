@@ -5,6 +5,7 @@
 #define MP3_BIT_RATE 128
 #define MP3_BUFFER_SIZE 8192
 
+#define BLOCK_SIZE 512.0f
 
 //decode headerless (or headered?) AAC frames into raw PCM data using FFmpeg
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx) {
@@ -52,7 +53,8 @@ std::vector<int16_t> convertPCMFloat(const std::vector<float> samples) {
     return convertedSamples;
 }
 
-void scalePCM(std::vector<float>& samples) {
+template<typename T>
+void scalePCM(std::vector<T>& samples) {
     for(int i = 0; i < samples.size(); i++) {
         samples[i] *= 32767.0f;
     }
@@ -120,23 +122,88 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
 
 //compress and code raw PCM samples into a lossy compressed format like MP3, only worse
 //TODO we're losing too much data! fix it!
-int lossyCompress(std::vector<float>& samples) {
+int lossyCompress(const std::vector<float> samples) {
     
-    scalePCM(samples);
+    // for(int i = 0; i < samples.size(); i++) {
+    //     samples[i] /= 2;
+    // }
 
-    std::vector<float> mdctCoeffs = mdct(samples);
 
-    std::vector<float> inverse = imdct(mdctCoeffs);
-
-    float mse = 0.0f;
+    std::vector<double> sampleCopy;
     for(int i = 0; i < samples.size(); i++) {
-        float originalPCM = samples[i];
-        float newPCM = inverse[i];
+        sampleCopy.push_back(samples[i]);
+    }
+
+    scalePCM(sampleCopy);
+
+    std::vector<double> output((samples.size() / 2) + 1, 0.0f);
+
+    fftw_plan plan = fftw_plan_r2r_1d(sampleCopy.size(), sampleCopy.data(), output.data(), FFTW_REDFT10, FFTW_ESTIMATE);
+
+    fftw_execute(plan);
+
+    fftw_destroy_plan(plan);
+
+    std::vector<double> backAgain(output.size() * 2, 0.0f);
+
+    fftw_plan inverse = fftw_plan_r2r_1d(output.size(), output.data(), backAgain.data(), FFTW_REDFT01, FFTW_ESTIMATE);
+
+    fftw_execute(inverse);
+
+    fftw_destroy_plan(inverse);
+
+    double mse = 0.0f;
+
+    for(int i = 0; i < samples.size(); i++) {
+        double originalPCM = samples[i] * 32767.0f;
+        double newPCM = backAgain[i];
+
         mse += (originalPCM - newPCM) * (originalPCM - newPCM);
     }
     
     mse /= samples.size();
-    printf("MSE for mdct and imdct: %.2f\n", mse);
+
+    printf("Mean Squared Error for mdct and imdct: %.2f\n", mse);
+
+
+    // scalePCM(samples);
+    // auto transformed = mdct(samples);
+    // auto inverse = imdct(transformed);
+
+
+    // float mse = 0.0f;
+    // float biggest = 0.0f;
+    // float smallest = 0.0f;
+
+    // for(int i = 0; i < samples.size(); i++) {
+    //     float originalPCM = samples[i];
+    //     float newPCM = inverse[i];
+
+    //     biggest = fmax(biggest, newPCM);
+    //     smallest = fmin(smallest, newPCM);
+
+    //     mse += (originalPCM - newPCM) * (originalPCM - newPCM);
+    // }
+    
+    // mse /= samples.size();
+    // float m_e = sqrt(mse);
+    // printf("Mean Error for mdct and imdct: %.2f data range: %.2f to %.2f\n", m_e, biggest, smallest);
+
+    // scalePCM(samples);
+
+    // std::vector<float> mdctCoeffs = mdct(samples);
+
+    // std::vector<float> inverse = imdct(mdctCoeffs);
+
+    // float mse = 0.0f;
+    // for(int i = 0; i < samples.size(); i++) {
+    //     float originalPCM = samples[i];
+    //     float newPCM = inverse[i];
+    //     mse += (originalPCM - newPCM) * (originalPCM - newPCM);
+    // }
+    
+    // mse /= samples.size();
+    // printf("MSE for mdct and imdct: %.2f\n", mse);
 
     //you can apply some scalefactors if you want
     //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)

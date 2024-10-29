@@ -4,10 +4,10 @@
 #include <iostream>
 
 //functions for compression pipeline
-std::vector<float> mdct(std::vector<float>& samples);
+std::vector<float> mdct(std::vector<float> samples);
 std::vector<int> quantize(const std::vector<float> coeffs, const std::vector<float> scaleFactors);
 void scaleByConstant(std::vector<float>& samples, float c);
-std::vector<float> imdct(std::vector<float>& samples);
+std::vector<float> imdct(std::vector<float> samples);
 
 //audio effects
 void filter(std::vector<float>& audio, int sampleRate, float cutoff);
