@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include <cmath>
 #include "mp4Read.h"
 #include "dsp.h"
@@ -7,8 +8,6 @@
 
 #define DURATION 1
 #define BUFF_SIZE (SAMPLE_RATE* DURATION * sizeof(short))
-
-
 
 
 int writeMp3(std::string fName, std::vector<char> data) {
@@ -62,112 +61,8 @@ int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, ui
 }
 
 //TODO remove opening ffmpeg avcodec with file, pass the information from my mp4 parser instead
-int main(int argc, char** argv) {
-	std::string fName("whereisshe.mp4");
-
-	//initialize ffmpeg
-	AVFormatContext *formatCtx = nullptr;
-	AVCodecContext *codecCtx = nullptr;
-	
-	if(avformat_open_input(&formatCtx, fName.c_str(), nullptr, nullptr) < 0) {
-		printf("FFmpeg could not open input file %s\n", fName.c_str());
-		return -1;
-	}
-
-	if(avformat_find_stream_info(formatCtx, nullptr) < 0) {
-		printf("FFmpeg could not find stream info\n");
-		return -1;
-	}
-
-	int audioStream = -1;
-
-	for(int i = 0; i < formatCtx->nb_streams; i++) {
-		if(formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-			audioStream = i;
-			break;
-		}
-	}
-
-	if(audioStream == -1) {
-		printf("No audio stream present in %s\n", fName.c_str());
-		return -1;
-	}
-
-	AVCodecParameters *params = formatCtx->streams[audioStream]->codecpar;
-	const AVCodec *codec = avcodec_find_decoder(params->codec_id);
-	if(!codec) {
-		printf("File %s is using an unsupported codec\n", fName.c_str());
-		return -1;
-	}
-
-	codecCtx = avcodec_alloc_context3(codec);
-	if(!codecCtx) {
-		printf("FFmpeg could not could allocate context\n");
-		return -1;
-	}
-
-	if(avcodec_parameters_to_context(codecCtx, params) < 0) {
-		printf("FFmpeg could not copy codec parameters to context\n");
-		return -1;
-
-	}
-
-	if(avcodec_open2(codecCtx, codec, nullptr) < 0) {
-		printf("FFmpeg could not open codec\n");
-		return -1;
-	}
-	
-	std::vector<float> decodedSamples;
-
-	int sampleRate = params->sample_rate;
-	int bitsPerSample = av_get_bytes_per_sample( (AVSampleFormat) params->format) * 8;
-	int numChannels = params->ch_layout.nb_channels;
-	const char* fmtName = av_get_sample_fmt_name( (AVSampleFormat) params->format);
-
-	printf("num channels %d\n", numChannels);
-	printf("sample rate %d\n", sampleRate);
-	printf("bits per sample %d\n", bitsPerSample);
-	printf("audio is format %s\n", fmtName);
-	
-	if(argc > 1 && std::string(argv[1]) == "-sin") {
-		auto sin = sanitySin(880.0f, 2.0f, sampleRate, numChannels);
-		writeWAV("sin.wav", sin, sampleRate, bitsPerSample, numChannels);
-		chorus(sin, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
-		writeWAV("filtered.wav", sin, sampleRate, bitsPerSample, numChannels);
-
-
-	} else if(argc > 1 && std::string(argv[1]) == "-ffmpeg") {
-
-		printf("reading file with with ffmpeg\n");
-		AVPacket *packet = av_packet_alloc();
-		if(!packet) {
-			printf("FFmpeg could not allocate packet\n");
-			return -1;
-		}
-
-		//read coded mp4a with 	ffmpeg instead of my library to check for correctness
-		std::vector<std::vector<uint8_t>> aacFrames;
-		while(av_read_frame(formatCtx, packet) >= 0) {
-			if(packet->stream_index == audioStream) {
-				std::vector<uint8_t> frame(packet->data, packet->data + packet->size);
-				aacFrames.push_back(frame);
-			}
-
-			av_packet_unref(packet);
-		}
-
-		av_packet_free(&packet);
-
-		printf("FFmpeg read %zu total frames\n", aacFrames.size());
-
-		//decompress samples with FFmpeg
-		decodedSamples = ffmpegDecompress(aacFrames, codecCtx);
-
-		printf("we got %zu total raw samples\n", decodedSamples.size());
-		writeWAV("out.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
-
-	}
-	else if(argc > 1 && std::string(argv[1]) == "-record") {
+int main(int argc, char** argv) {	
+	if(argc > 1 && !strcmp("-record", argv[1])) {
 		
 		AudioUnit unit = setupCoreAudio();
 
@@ -177,45 +72,144 @@ int main(int argc, char** argv) {
 
 		AudioOutputUnitStop(unit);
 
+		printf("audio buffer has size %zu\n", audioBuffer.size());
+
+
 	} else {
-		//read the mp4 with my library
-		mp4Reader reader(fName);
-		if(reader.getStatus()) {
-			printf("error reading mp4 data from file %s\n", fName.c_str()); 
+		std::string fName("whereisshe.mp4");
+
+		//initialize ffmpeg
+		AVFormatContext *formatCtx = nullptr;
+		AVCodecContext *codecCtx = nullptr;
+		
+		if(avformat_open_input(&formatCtx, fName.c_str(), nullptr, nullptr) < 0) {
+			printf("FFmpeg could not open input file %s\n", fName.c_str());
+			return -1;
+		}
+
+		if(avformat_find_stream_info(formatCtx, nullptr) < 0) {
+			printf("FFmpeg could not find stream info\n");
+			return -1;
+		}
+
+		int audioStream = -1;
+
+		for(int i = 0; i < formatCtx->nb_streams; i++) {
+			if(formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+				audioStream = i;
+				break;
+			}
+		}
+
+		if(audioStream == -1) {
+			printf("No audio stream present in %s\n", fName.c_str());
+			return -1;
+		}
+
+		AVCodecParameters *params = formatCtx->streams[audioStream]->codecpar;
+		const AVCodec *codec = avcodec_find_decoder(params->codec_id);
+		if(!codec) {
+			printf("File %s is using an unsupported codec\n", fName.c_str());
+			return -1;
+		}
+
+		codecCtx = avcodec_alloc_context3(codec);
+		if(!codecCtx) {
+			printf("FFmpeg could not could allocate context\n");
+			return -1;
+		}
+
+		if(avcodec_parameters_to_context(codecCtx, params) < 0) {
+			printf("FFmpeg could not copy codec parameters to context\n");
+			return -1;
+
+		}
+
+		if(avcodec_open2(codecCtx, codec, nullptr) < 0) {
+			printf("FFmpeg could not open codec\n");
+			return -1;
 		}
 		
-		auto myFrames = reader.getAudioSamples();
-		printf("I read %zu total frames\n", myFrames.size());
-		
-		//decompress audio samples with FFmpeg
-		decodedSamples = ffmpegDecompress(myFrames, codecCtx);
-		printf("we got %zu total raw samples\n", decodedSamples.size());
+		std::vector<float> decodedSamples;
 
-		//writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+		int sampleRate = params->sample_rate;
+		int bitsPerSample = av_get_bytes_per_sample( (AVSampleFormat) params->format) * 8;
+		int numChannels = params->ch_layout.nb_channels;
+		const char* fmtName = av_get_sample_fmt_name( (AVSampleFormat) params->format);
 
-		//apply some effects and write to wav
-		filter(decodedSamples, sampleRate, 100.0f);
-		chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
-		reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
-
-		writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
-
-		//compress and write to mp3
-
-		//mp3Compress(decodedSamples);
-		std::vector<char> mp3Bytes = lameCompress(decodedSamples, numChannels, sampleRate);
+		printf("num channels %d\n", numChannels);
+		printf("sample rate %d\n", sampleRate);
+		printf("bits per sample %d\n", bitsPerSample);
+		printf("audio is format %s\n", fmtName);
 
 
-		std::string mp3Name = "out.mp3";
-		int mp3Size = writeMp3("out.mp3", mp3Bytes);
-		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
+		if(argc > 1 && !strcmp(argv[1], "-ffmpeg")) {
+			printf("reading file with with ffmpeg\n");
+			AVPacket *packet = av_packet_alloc();
+			if(!packet) {
+				printf("FFmpeg could not allocate packet\n");
+				return -1;
+			}
 
+			//read coded mp4a with 	ffmpeg instead of my library to check for correctness
+			std::vector<std::vector<uint8_t>> aacFrames;
+			while(av_read_frame(formatCtx, packet) >= 0) {
+				if(packet->stream_index == audioStream) {
+					std::vector<uint8_t> frame(packet->data, packet->data + packet->size);
+					aacFrames.push_back(frame);
+				}
+
+				av_packet_unref(packet);
+			}
+
+			av_packet_free(&packet);
+
+			printf("FFmpeg read %zu total frames\n", aacFrames.size());
+
+			//decompress samples with FFmpeg
+			decodedSamples = ffmpegDecompress(aacFrames, codecCtx);
+
+			printf("we got %zu total raw samples\n", decodedSamples.size());
+			writeWAV("out.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+		} else {
+			//read the mp4 with my library
+			mp4Reader reader(fName);
+			if(reader.getStatus()) {
+				printf("error reading mp4 data from file %s\n", fName.c_str()); 
+			}
+			
+			auto myFrames = reader.getAudioSamples();
+			printf("I read %zu total frames\n", myFrames.size());
+			
+			//decompress audio samples with FFmpeg
+			decodedSamples = ffmpegDecompress(myFrames, codecCtx);
+			printf("we got %zu total raw samples\n", decodedSamples.size());
+
+			//writeWAV("og.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+
+			//apply some effects and write to wav
+			filter(decodedSamples, sampleRate, 100.0f);
+			chorus(decodedSamples, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
+			reverb(decodedSamples, sampleRate, 0.5f, 0.5f);
+
+			writeWAV("filtered.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
+
+			//compress and write to mp3
+			//prepare pcm data by scaling and converting to pcm int
+			std::vector<int16_t> convertedSamples = convertFloat(decodedSamples);
+
+			//mp3Compress(decodedSamples);
+			std::vector<char> mp3Bytes = lameCompress(convertedSamples, numChannels, sampleRate);
+
+
+			std::string mp3Name = "out.mp3";
+			int mp3Size = writeMp3("out.mp3", mp3Bytes);
+			printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
+		}
+
+		avformat_close_input(&formatCtx);
+		avformat_free_context(formatCtx);	
 	}
-
-
-
-	avformat_close_input(&formatCtx);
-	avformat_free_context(formatCtx);	
 
 	return 0;
 }

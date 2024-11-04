@@ -17,7 +17,8 @@ extern "C" {
 	#include "huffman.h"
 }
 
-std::vector<char> lameCompress(std::vector<float> samples, int channels, int sampleRate);
+std::vector<int16_t> convertFloat(std::vector<float> samples);
+std::vector<char> lameCompress(std::vector<int16_t> samples, int channels, int sampleRate);
 std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames, AVCodecContext* codecCtx);
 int lossyCompress(const std::vector<float> samples);
 

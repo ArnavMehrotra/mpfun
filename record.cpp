@@ -1,5 +1,6 @@
 #include "record.h"
 
+std::vector<int16_t> audioBuffer;
 
 static OSStatus processAudio(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
                     UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
@@ -11,8 +12,8 @@ static OSStatus processAudio(void *inRefCon, AudioUnitRenderActionFlags *ioActio
     AudioBufferList bufferList;
     bufferList.mNumberBuffers = 1;
     bufferList.mBuffers[0].mNumberChannels = 1;
-    bufferList.mBuffers[0].mDataByteSize = inNumberFrames * sizeof(short);
-    bufferList.mBuffers[0].mData = malloc(inNumberFrames * sizeof(short));
+    bufferList.mBuffers[0].mDataByteSize = inNumberFrames * sizeof(int16_t);
+    bufferList.mBuffers[0].mData = malloc(inNumberFrames * sizeof(int16_t));
 
     // Render the audio data
     AudioUnitRender(audioUnit,
@@ -22,6 +23,9 @@ static OSStatus processAudio(void *inRefCon, AudioUnitRenderActionFlags *ioActio
                     inNumberFrames,
                     &bufferList);
 
+    for(int i = 0; i < inNumberFrames; i++) {
+        audioBuffer.push_back(((short*)bufferList.mBuffers[0].mData)[i]);
+    }
 
     free(bufferList.mBuffers[0].mData);
     return noErr;

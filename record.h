@@ -8,6 +8,6 @@ extern "C" {
 
 #define SAMPLE_RATE 44100
 
-extern std::vector<short> audioBuffer;
+extern std::vector<int16_t> audioBuffer;
 
 AudioUnit setupCoreAudio();

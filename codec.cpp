@@ -41,7 +41,7 @@ std::vector<float> ffmpegDecompress(std::vector<std::vector<uint8_t>> rawFrames,
 	return decodedSamples;		
 }
 
-std::vector<int16_t> convertPCMFloat(const std::vector<float> samples) {
+std::vector<int16_t> convertSamples(const std::vector<float> samples) {
     std::vector<int16_t> convertedSamples;
     for(int i = 0; i < samples.size(); i++) {
         if(samples[i] > 32767.0f) convertedSamples.push_back(32767);
@@ -60,12 +60,22 @@ void scalePCM(std::vector<T>& samples) {
     }
 }
 
-//compress PCM samples to mp3 using liblamemp3
-std::vector<char> lameCompress(std::vector<float> samples, int channels, int sampleRate) {
-
-    //prepare pcm data by scaling and converting to pcm int
+std::vector<int16_t> convertFloat(std::vector<float> samples) {
     scalePCM(samples);
-    std::vector<int16_t> convertedSamples = convertPCMFloat(samples);
+    return convertSamples(samples);
+}
+
+std::vector<float> convertPCM(const std::vector<int16_t> samples) {
+    std::vector<float> convertedSamples;
+    for(int i = 0; i < samples.size(); i++) {
+        convertedSamples.push_back(samples[i] / 32767.0f);
+    }
+
+    return convertedSamples;
+}
+
+
+std::vector<char> lameCompress(std::vector<int16_t> samples, int channels, int sampleRate) {
 
     //initialize liblamemp3 
     lame_t lame = lame_init();
@@ -88,12 +98,12 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
 
     //allocate buffer for lame codec
     unsigned char mp3Buffer[MP3_BUFFER_SIZE];
-    int16_t* pcmPtr = convertedSamples.data();
+    int16_t* pcmPtr = samples.data();
 
     std::vector<char> mp3Stream;
 
     //encode PCM samples
-    int numSamples = convertedSamples.size() / channels;
+    int numSamples = samples.size() / channels;
     while(numSamples > 0) {
         int encodeSamples = std::min(numSamples, 1152);
         int encodedBytes = lame_encode_buffer_interleaved(lame, pcmPtr, encodeSamples, mp3Buffer, MP3_BUFFER_SIZE);
@@ -119,6 +129,7 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
 
     return mp3Stream;
 }
+
 
 //compress and code raw PCM samples into a lossy compressed format like MP3, only worse
 //TODO we're losing too much data! fix it!
