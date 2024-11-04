@@ -124,11 +124,6 @@ std::vector<char> lameCompress(std::vector<float> samples, int channels, int sam
 //TODO we're losing too much data! fix it!
 int lossyCompress(const std::vector<float> samples) {
     
-    // for(int i = 0; i < samples.size(); i++) {
-    //     samples[i] /= 2;
-    // }
-
-
     std::vector<double> sampleCopy;
     for(int i = 0; i < samples.size(); i++) {
         sampleCopy.push_back(samples[i]);
@@ -164,52 +159,6 @@ int lossyCompress(const std::vector<float> samples) {
     mse /= samples.size();
 
     printf("Mean Squared Error for mdct and imdct: %.2f\n", mse);
-
-
-    // scalePCM(samples);
-    // auto transformed = mdct(samples);
-    // auto inverse = imdct(transformed);
-
-
-    // float mse = 0.0f;
-    // float biggest = 0.0f;
-    // float smallest = 0.0f;
-
-    // for(int i = 0; i < samples.size(); i++) {
-    //     float originalPCM = samples[i];
-    //     float newPCM = inverse[i];
-
-    //     biggest = fmax(biggest, newPCM);
-    //     smallest = fmin(smallest, newPCM);
-
-    //     mse += (originalPCM - newPCM) * (originalPCM - newPCM);
-    // }
-    
-    // mse /= samples.size();
-    // float m_e = sqrt(mse);
-    // printf("Mean Error for mdct and imdct: %.2f data range: %.2f to %.2f\n", m_e, biggest, smallest);
-
-    // scalePCM(samples);
-
-    // std::vector<float> mdctCoeffs = mdct(samples);
-
-    // std::vector<float> inverse = imdct(mdctCoeffs);
-
-    // float mse = 0.0f;
-    // for(int i = 0; i < samples.size(); i++) {
-    //     float originalPCM = samples[i];
-    //     float newPCM = inverse[i];
-    //     mse += (originalPCM - newPCM) * (originalPCM - newPCM);
-    // }
-    
-    // mse /= samples.size();
-    // printf("MSE for mdct and imdct: %.2f\n", mse);
-
-    //you can apply some scalefactors if you want
-    //mdct coefficients are already scaled by a factor of 2 / sqrt(BLOCK_SIZE = 512)
-
-    // std::vector<float> scaleFactors(mdctCoeffs.size(), 0.5f);
-    // std::vector<int> quantized = quantize(mdctCoeffs, scaleFactors);
 
     return 0;
 }

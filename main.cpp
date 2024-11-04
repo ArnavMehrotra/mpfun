@@ -3,6 +3,12 @@
 #include "mp4Read.h"
 #include "dsp.h"
 #include "codec.h"
+#include "record.h"
+
+#define DURATION 1
+#define BUFF_SIZE (SAMPLE_RATE* DURATION * sizeof(short))
+
+
 
 
 int writeMp3(std::string fName, std::vector<char> data) {
@@ -160,6 +166,17 @@ int main(int argc, char** argv) {
 		printf("we got %zu total raw samples\n", decodedSamples.size());
 		writeWAV("out.wav", decodedSamples, sampleRate, bitsPerSample, numChannels);
 
+	}
+	else if(argc > 1 && std::string(argv[1]) == "-record") {
+		
+		AudioUnit unit = setupCoreAudio();
+
+		AudioOutputUnitStart(unit);
+
+		sleep(DURATION);
+
+		AudioOutputUnitStop(unit);
+
 	} else {
 		//read the mp4 with my library
 		mp4Reader reader(fName);
@@ -192,11 +209,6 @@ int main(int argc, char** argv) {
 		std::string mp3Name = "out.mp3";
 		int mp3Size = writeMp3("out.mp3", mp3Bytes);
 		printf("wrote %d bytes to %s\n", mp3Size, mp3Name.c_str());
-
-		auto sinWave = sanitySin(440.0f, 0.1f, sampleRate, 2);
-
-		lossyCompress(sinWave);
-		// writeWav(decodedSamples);
 
 	}
 
