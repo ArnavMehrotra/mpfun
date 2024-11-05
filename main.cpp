@@ -62,19 +62,34 @@ int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, ui
 
 //TODO remove opening ffmpeg avcodec with file, pass the information from my mp4 parser instead
 int main(int argc, char** argv) {	
-	if(argc > 1 && !strcmp("-record", argv[1])) {
-		
+	if(argc > 1 && !strcmp("-record", argv[1])) {	
 		AudioUnit unit = setupCoreAudio();
+
+		AudioStreamBasicDescription fmt;
+		uint32_t fmtSize = sizeof(fmt);
+		OSStatus status = AudioUnitGetProperty(unit, kAudioUnitProperty_StreamFormat,
+												kAudioUnitScope_Output, 1, &fmt, &fmtSize);
+
+		int channels = fmt.mChannelsPerFrame;
+		printf("audio recording device has %d channels\n", channels);
 
 		AudioOutputUnitStart(unit);
 
-		sleep(DURATION);
+		sleep(5);
 
 		AudioOutputUnitStop(unit);
 
-		printf("audio buffer has size %zu\n", audioBuffer.size());
+		int16_t maxVal = 0, minVal = 0;
+		for(int i = 0; i < audioBuffer.size(); i++) {
+			maxVal = std::max(maxVal, audioBuffer[i]);
+			minVal = std::min(minVal, audioBuffer[i]);	
+		}
 
+		printf("audio buffer has size %zu and range %d - %d\n", audioBuffer.size(), minVal, maxVal);
+		
+		std::vector<char> mp3Frames = lameCompress(audioBuffer, channels, SAMPLE_RATE);
 
+		writeMp3("recording.mp3", mp3Frames);
 	} else {
 		std::string fName("whereisshe.mp4");
 
