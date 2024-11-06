@@ -1,136 +1,78 @@
 #include "record.h"
-#include "permissions.h"
 
 std::vector<float> audioBuffer;
 
-static OSStatus processAudio(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
-                             UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
-
-    AudioUnit audioUnit = *(AudioUnit *)inRefCon;
-
-    AudioBufferList bufferList;
-    bufferList.mNumberBuffers = 1;
-    bufferList.mBuffers[0].mNumberChannels = 1;
-    bufferList.mBuffers[0].mDataByteSize = inNumberFrames * sizeof(float);
-
-    float buffer[inNumberFrames];
-    bufferList.mBuffers[0].mData = buffer;
-
-    OSStatus status = AudioUnitRender(audioUnit,
-                                      ioActionFlags,
-                                      inTimeStamp,
-                                      inBusNumber,
-                                      inNumberFrames,
-                                      &bufferList);
-    if (status != noErr) {
-        printf("rendering audio unit has error %d", status);
-        return status;  // Handle errors properly
-    }
-    printf("captured %d frames\n", inNumberFrames);
-    // Process the captured audio data
-    for (UInt32 i = 0; i < inNumberFrames; i++) {
-        audioBuffer.push_back(buffer[i]);
-    }
-
-    return noErr;
-}
-
-
-AudioUnit setupCoreAudio() {
-
-    RequestMicrophonePermission();
-
-    OSStatus status;
-
-    AudioComponentDescription desc;
-    desc.componentType         = kAudioUnitType_Output;
-    desc.componentSubType      = kAudioUnitSubType_HALOutput;
-    desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-    desc.componentFlags        = 0;
-    desc.componentFlagsMask    = 0;
-
-    AudioComponent inputComponent = AudioComponentFindNext(NULL, &desc);
-
-    AudioUnit audioUnit;
-    AudioComponentInstanceNew(inputComponent, &audioUnit);
-
-    UInt32 enableIO = 1;
-    status = AudioUnitSetProperty(audioUnit,
-                        kAudioOutputUnitProperty_EnableIO,
-                        kAudioUnitScope_Input,
-                        1,
-                        &enableIO,
-                        sizeof(enableIO));
-    
-    if(status != noErr) {
-        printf("could not enable audio unit input, error has status: %d\n", status);
-        return NULL;
-    }
-
-    UInt32 disableOutput = 0;
-    status = AudioUnitSetProperty(audioUnit,
-                                  kAudioOutputUnitProperty_EnableIO,
-                                  kAudioUnitScope_Output, // Disable output
-                                  0, // Output element
-                                  &disableOutput,
-                                  sizeof(disableOutput));
-    if (status != noErr) {
-        printf("Could not disable audio unit output, error has status: %d\n", status);
-        return NULL;
-    }
-
-    AURenderCallbackStruct callbackStruct;
-    callbackStruct.inputProc = processAudio;
-    callbackStruct.inputProcRefCon = NULL;
-    status = AudioUnitSetProperty(audioUnit,
-                        kAudioUnitProperty_SetRenderCallback,
-                        kAudioUnitScope_Global,
-                        1,
-                        &callbackStruct,
-                        sizeof(callbackStruct));
-
-    if(status != noErr) {
-        printf("could not set audio unit callback function, error has status %d\n", status);
-        return NULL;
-    }
+// Function to query the default input device's audio format
+void GetDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat) {
+    AudioDeviceID deviceID = 0;  // Default input device ID
+    UInt32 size = sizeof(deviceID);
 
     // Get the default input device
     AudioObjectPropertyAddress propertyAddress = {
-        .mSelector = kAudioHardwarePropertyDefaultInputDevice,
-        .mScope = kAudioObjectPropertyScopeGlobal,
-        .mElement = kAudioObjectPropertyElementMaster
+        kAudioHardwarePropertyDefaultInputDevice, // Default input device selector
+        kAudioObjectPropertyScopeGlobal,         // Global scope
+        kAudioObjectPropertyElementMain          // Main element
     };
 
-    AudioDeviceID deviceID;
-    UInt32 propertySize = sizeof(deviceID);
-
-    status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &propertySize, &deviceID);
+    OSStatus status = AudioObjectGetPropertyData(kAudioObjectSystemObject,
+                                                 &propertyAddress,
+                                                 0,
+                                                 NULL,
+                                                 &size,
+                                                 &deviceID);
     if (status != noErr) {
-        printf("Error getting default device ID, error has status: %d\n", status);
-        return NULL;
+        printf("Error: Unable to get default input device (%d)\n", status);
+        return;
     }
 
-    status = AudioUnitSetProperty(audioUnit,
-                        kAudioOutputUnitProperty_CurrentDevice,
-                        kAudioUnitScope_Global,
-                        0,
-                        &deviceID,
-                        sizeof(deviceID));
+    // Query the default input device's stream format
+    propertyAddress.mSelector = kAudioDevicePropertyStreamFormat;
+    propertyAddress.mScope = kAudioDevicePropertyScopeInput; // Input scope
+    propertyAddress.mElement = kAudioObjectPropertyElementMain;
 
-    if(status != noErr) {
-        printf("Error setting audio device, error has status: %d\n", status);
-        return NULL;
+    size = sizeof(AudioStreamBasicDescription);
+    status = AudioObjectGetPropertyData(deviceID,
+                                        &propertyAddress,
+                                        0,
+                                        NULL,
+                                        &size,
+                                        outFormat);
+    if (status != noErr) {
+        printf("Error: Unable to get input device format (%d)\n", status);
+        return;
     }
 
-    status = AudioUnitInitialize(audioUnit);
+    // Print the format for debugging
+    printf("Default Input Device Format:\n");
+    printf("  Sample Rate: %f\n", outFormat->mSampleRate);
+    printf("  Channels: %u\n", outFormat->mChannelsPerFrame);
+    printf("  Bits per Channel: %u\n", outFormat->mBitsPerChannel);
+    printf("  Bytes per Packet: %u\n", outFormat->mBytesPerPacket);
+    printf("  Frames per Packet: %u\n", outFormat->mFramesPerPacket);
+}
 
-    if(status != noErr) {
-        printf("could not intialize audio unit, error has status %d\n", status);
-        return NULL;
-    }
-    else {
-        printf("successfully intialized audio input!\n");
+
+
+void HandleInputBuffer(void *inUserData,
+                       AudioQueueRef inAQ,
+                       AudioQueueBufferRef inBuffer,
+                       const AudioTimeStamp *inStartTime,
+                       UInt32 inNumPackets,
+                       const AudioStreamPacketDescription *inPacketDesc) {
+    if (inNumPackets > 0) {
+        // Cast mAudioData to int16_t* for 16-bit PCM
+        float* pcmData = (float *)inBuffer->mAudioData;
+        UInt32 numSamples = inBuffer->mAudioDataByteSize / sizeof(float);
+
+        // Example: Print the first 10 samples
+        for (UInt32 i = 0; i < numSamples; i++) {
+            audioBuffer.push_back(pcmData[i]);
+        }
+
+        // Example: Process PCM data
+        // You can send this data to a file, an encoder, or apply DSP effects
     }
 
-    return audioUnit;
+    // Re-enqueue the buffer for further recording
+    AudioQueueEnqueueBuffer(inAQ, inBuffer, 0, NULL);
 }

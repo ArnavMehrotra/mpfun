@@ -106,7 +106,9 @@ std::vector<char> lameCompress(std::vector<int16_t> samples, int channels, int s
     int numSamples = samples.size() / channels;
     while(numSamples > 0) {
         int encodeSamples = std::min(numSamples, 1152);
-        int encodedBytes = lame_encode_buffer_interleaved(lame, pcmPtr, encodeSamples, mp3Buffer, MP3_BUFFER_SIZE);
+        int encodedBytes = -1;
+        if(channels == 1) encodedBytes = lame_encode_buffer(lame, pcmPtr, NULL, encodeSamples, mp3Buffer, MP3_BUFFER_SIZE);
+        else encodedBytes = lame_encode_buffer_interleaved(lame, pcmPtr, encodeSamples, mp3Buffer, MP3_BUFFER_SIZE);
 
         if(encodedBytes < 0) {
             printf("error encoding mp3 frame\n");

@@ -10,4 +10,11 @@ extern "C" {
 
 extern std::vector<float> audioBuffer;
 
-AudioUnit setupCoreAudio();
+void GetDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat);
+
+void HandleInputBuffer(void *inUserData,
+                       AudioQueueRef inAQ,
+                       AudioQueueBufferRef inBuffer,
+                       const AudioTimeStamp *inStartTime,
+                       UInt32 inNumPackets,
+                       const AudioStreamPacketDescription *inPacketDesc);

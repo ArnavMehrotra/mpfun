@@ -6,87 +6,9 @@
 #include "codec.h"
 #include "record.h"
 
-#define DURATION 5
+#define DURATION 1
 #define BUFF_SIZE (SAMPLE_RATE* DURATION * sizeof(short))
 
-
-void AdjustMicrophoneGain(float desiredGain) {
-    // Ensure the desired gain is within the valid range of 0.0 to 1.0
-    if (desiredGain < 0.0f || desiredGain > 1.0f) {
-        std::cerr << "Desired gain must be between 0.0 and 1.0." << std::endl;
-        return;
-    }
-
-    // Step 1: Get the default input device
-    AudioDeviceID inputDevice = kAudioObjectUnknown;
-    UInt32 propertySize = sizeof(inputDevice);
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioHardwarePropertyDefaultInputDevice,
-        kAudioObjectPropertyScopeGlobal,
-        kAudioObjectPropertyElementMaster
-    };
-
-    OSStatus status = AudioObjectGetPropertyData(
-        kAudioObjectSystemObject,
-        &propertyAddress,
-        0,
-        nullptr,
-        &propertySize,
-        &inputDevice
-    );
-
-    if (status != noErr || inputDevice == kAudioObjectUnknown) {
-        std::cerr << "Failed to get the default input device." << std::endl;
-        return;
-    }
-
-    // Step 2: Check if the input device supports volume control
-    propertyAddress.mSelector = kAudioDevicePropertyVolumeScalar;
-    propertyAddress.mScope = kAudioDevicePropertyScopeInput;
-    propertyAddress.mElement = kAudioObjectPropertyElementMaster;
-
-    if (!AudioObjectHasProperty(inputDevice, &propertyAddress)) {
-        std::cerr << "Input device does not have adjustable gain." << std::endl;
-        return;
-    }
-
-    // Step 3: Get the current gain
-    Float32 currentGain;
-    propertySize = sizeof(currentGain);
-    status = AudioObjectGetPropertyData(
-        inputDevice,
-        &propertyAddress,
-        0,
-        nullptr,
-        &propertySize,
-        &currentGain
-    );
-
-    if (status != noErr) {
-        std::cerr << "Failed to get the current input gain." << std::endl;
-        return;
-    }
-
-    std::cout << "Current Input Gain: " << currentGain << std::endl;
-
-    // Step 4: Set the desired gain
-    propertySize = sizeof(desiredGain);
-    status = AudioObjectSetPropertyData(
-        inputDevice,
-        &propertyAddress,
-        0,
-        nullptr,
-        propertySize,
-        &desiredGain
-    );
-
-    if (status != noErr) {
-        std::cerr << "Failed to set the desired input gain." << std::endl;
-        return;
-    }
-
-    std::cout << "Successfully set the input gain to: " << desiredGain << std::endl;
-}
 
 
 int writeMp3(std::string fName, std::vector<char> data) {
@@ -142,42 +64,33 @@ int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, ui
 //TODO remove opening ffmpeg avcodec with file, pass the information from my mp4 parser instead
 int main(int argc, char** argv) {	
 	if(argc > 1 && !strcmp("-record", argv[1])) {	
+		AudioStreamBasicDescription format = {0};
+		GetDefaultInputDeviceFormat(&format);
 
-		AudioUnit unit = setupCoreAudio();
+		AudioQueueRef queue;
+		AudioQueueNewInput(&format, HandleInputBuffer, NULL, NULL, NULL, 0, &queue);
 
-		if(!unit) {
-			printf("error initializing core audio\n");
-			return 1;
+		AudioQueueBufferRef buffer;
+		for (int i = 0; i < 3; i++) {
+			AudioQueueAllocateBuffer(queue, 1024, &buffer);
+			AudioQueueEnqueueBuffer(queue, buffer, 0, NULL);
 		}
 
-		AudioStreamBasicDescription fmt;
-		uint32_t fmtSize = sizeof(fmt);
-		OSStatus status = AudioUnitGetProperty(unit, kAudioUnitProperty_StreamFormat,
-												kAudioUnitScope_Output, 1, &fmt, &fmtSize);
+		AudioQueueStart(queue, NULL);
+		printf("Recording... Press Enter to stop.\n");
+		getchar();
 
-		int channels = fmt.mChannelsPerFrame;
-		int sr = fmt.mSampleRate;
-		int bps = fmt.mBitsPerChannel;
-		printf("audio recording device has %d channels at %d with %d bits\n", channels, sr, bps);
-		// AdjustMicrophoneGain(0.5);
+		AudioQueueStop(queue, true);
+		AudioQueueDispose(queue, true);
 
-		AudioOutputUnitStart(unit);
+		printf("audio buffer has %zu samples\n", audioBuffer.size());
 
-		sleep(DURATION);
+		writeWAV("recording.wav", audioBuffer, format.mSampleRate, format.mBitsPerChannel, format.mChannelsPerFrame);
 
-		AudioOutputUnitStop(unit);
+		std::vector<int16_t> convertedPCM = convertFloat(audioBuffer);		
+		std::vector<char> mp3Frames = lameCompress(convertedPCM, format.mChannelsPerFrame, format.mSampleRate);
 
-		float maxVal = 0, minVal = 0;
-		for(int i = 0; i < audioBuffer.size(); i++) {
-			maxVal = fmax(maxVal, audioBuffer[i]);
-			minVal = fmin(minVal, audioBuffer[i]);	
-		}
-
-		printf("audio buffer has size %zu and range %.2f - %.2f\n", audioBuffer.size(), minVal, maxVal);
-		
-		// std::vector<char> mp3Frames = lameCompress(audioBuffer, channels, SAMPLE_RATE);
-
-		// writeMp3("recording.mp3", mp3Frames);
+		writeMp3("recording.mp3", mp3Frames);
 	} else {
 		std::string fName("whereisshe.mp4");
 
