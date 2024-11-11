@@ -6,8 +6,8 @@
 #include "codec.h"
 #include "record.h"
 
-#define DURATION 1
 #define BUFF_SIZE (SAMPLE_RATE* DURATION * sizeof(short))
+#define CALLBACKS_PER_SECOND 100
 
 
 
@@ -63,18 +63,25 @@ int writeWAV(std::string fName, std::vector<float> data, uint32_t sampleRate, ui
 
 //TODO remove opening ffmpeg avcodec with file, pass the information from my mp4 parser instead
 int main(int argc, char** argv) {	
-	if(argc > 1 && !strcmp("-record", argv[1])) {	
+	if(argc > 1 && !strcmp("-record", argv[1])) {
+		//set up audio queue with default audio device
 		AudioStreamBasicDescription format = {0};
-		GetDefaultInputDeviceFormat(&format);
+		getDefaultInputDeviceFormat(&format);
 
 		AudioQueueRef queue;
-		AudioQueueNewInput(&format, HandleInputBuffer, NULL, NULL, NULL, 0, &queue);
+		AudioQueueNewInput(&format, handleInputBuffer, NULL, NULL, NULL, 0, &queue);
 
 		AudioQueueBufferRef buffer;
+		const uint32_t bufferSize = format.mSampleRate * format.mChannelsPerFrame * format.mBytesPerFrame / CALLBACKS_PER_SECOND;
+		printf("buffer size: %d\n", bufferSize);
+
+		//use 3 buffers in the audio queue
 		for (int i = 0; i < 3; i++) {
-			AudioQueueAllocateBuffer(queue, 1024, &buffer);
+			AudioQueueAllocateBuffer(queue, bufferSize, &buffer);
 			AudioQueueEnqueueBuffer(queue, buffer, 0, NULL);
 		}
+
+		int sampleRate = format.mSampleRate;
 
 		AudioQueueStart(queue, NULL);
 		printf("Recording... Press Enter to stop.\n");
@@ -85,10 +92,14 @@ int main(int argc, char** argv) {
 
 		printf("audio buffer has %zu samples\n", audioBuffer.size());
 
-		writeWAV("recording.wav", audioBuffer, format.mSampleRate, format.mBitsPerChannel, format.mChannelsPerFrame);
+		writeWAV("recording.wav", audioBuffer, sampleRate, format.mBitsPerChannel, format.mChannelsPerFrame);
+
+		// chorus(audioBuffer, sampleRate, 0.002f, 1.0f, 0.01f, 0.5f);
+		// reverb(audioBuffer, sampleRate, 0.5f, 0.5f);
+		filter(audioBuffer, sampleRate, 5000.0f);
 
 		std::vector<int16_t> convertedPCM = convertFloat(audioBuffer);		
-		std::vector<char> mp3Frames = lameCompress(convertedPCM, format.mChannelsPerFrame, format.mSampleRate);
+		std::vector<char> mp3Frames = lameCompress(convertedPCM, format.mChannelsPerFrame, sampleRate);
 
 		writeMp3("recording.mp3", mp3Frames);
 	} else {

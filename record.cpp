@@ -2,8 +2,7 @@
 
 std::vector<float> audioBuffer;
 
-// Function to query the default input device's audio format
-void GetDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat) {
+void getDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat) {
     AudioDeviceID deviceID = 0;  // Default input device ID
     UInt32 size = sizeof(deviceID);
 
@@ -25,7 +24,6 @@ void GetDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat) {
         return;
     }
 
-    // Query the default input device's stream format
     propertyAddress.mSelector = kAudioDevicePropertyStreamFormat;
     propertyAddress.mScope = kAudioDevicePropertyScopeInput; // Input scope
     propertyAddress.mElement = kAudioObjectPropertyElementMain;
@@ -52,8 +50,8 @@ void GetDefaultInputDeviceFormat(AudioStreamBasicDescription *outFormat) {
 }
 
 
-
-void HandleInputBuffer(void *inUserData,
+//Callback funciton for 
+void handleInputBuffer(void *inUserData,
                        AudioQueueRef inAQ,
                        AudioQueueBufferRef inBuffer,
                        const AudioTimeStamp *inStartTime,
